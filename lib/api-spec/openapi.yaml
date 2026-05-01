@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ClipRank - Multimodal Video Analyzer API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: videos
+    description: Video analysis operations
+  - name: payments
+    description: PayPal payment operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,136 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /videos:
+    get:
+      operationId: listAnalyses
+      tags: [videos]
+      summary: List recent video analyses
+      responses:
+        "200":
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoAnalysis"
+
+  /videos/analyze:
+    post:
+      operationId: analyzeVideo
+      tags: [videos]
+      summary: Analyze video frames with AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeVideoBody"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysis"
+
+  /videos/{id}:
+    get:
+      operationId: getAnalysis
+      tags: [videos]
+      summary: Get analysis by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysis"
+
+  /videos/{id}/unlock:
+    post:
+      operationId: unlockPremium
+      tags: [videos]
+      summary: Unlock premium features after payment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnlockPremiumBody"
+      responses:
+        "200":
+          description: Updated analysis with premium content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysis"
+
+  /payments/create-order:
+    post:
+      operationId: createPaypalOrder
+      tags: [payments]
+      summary: Create a PayPal order for premium unlock ($10)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "200":
+          description: PayPal order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResult"
+
+  /payments/capture-order:
+    post:
+      operationId: capturePaypalOrder
+      tags: [payments]
+      summary: Capture PayPal payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptureOrderBody"
+      responses:
+        "200":
+          description: Capture result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptureResult"
+
+  /videos/stats:
+    get:
+      operationId: getStats
+      tags: [videos]
+      summary: Get aggregate stats across all analyses
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +168,158 @@ components:
       required:
         - status
 
+    VideoAnalysis:
+      type: object
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        fingerprint:
+          type: string
+        overallScore:
+          type: number
+        pacingScore:
+          type: number
+        visualHookScore:
+          type: number
+        captionReadabilityScore:
+          type: number
+        transcript:
+          type: string
+        summary:
+          type: string
+        pacingFeedback:
+          type: string
+        visualHookFeedback:
+          type: string
+        captionFeedback:
+          type: string
+        professionalAdvice:
+          type: string
+          nullable: true
+        visualHeatmap:
+          type: string
+          nullable: true
+        isPremiumUnlocked:
+          type: boolean
+        durationSeconds:
+          type: number
+        frameCount:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - filename
+        - fingerprint
+        - overallScore
+        - pacingScore
+        - visualHookScore
+        - captionReadabilityScore
+        - transcript
+        - summary
+        - pacingFeedback
+        - visualHookFeedback
+        - captionFeedback
+        - isPremiumUnlocked
+        - durationSeconds
+        - frameCount
+        - createdAt
+
+    AnalyzeVideoBody:
+      type: object
+      properties:
+        frames:
+          type: array
+          items:
+            type: string
+          description: Base64-encoded JPEG frames extracted at 1fps
+        audioBase64:
+          type: string
+          nullable: true
+          description: Base64-encoded audio extracted from video
+        filename:
+          type: string
+        durationSeconds:
+          type: number
+        fingerprint:
+          type: string
+          description: SHA-256 hash of video for cache lookup
+      required:
+        - frames
+        - filename
+        - durationSeconds
+        - fingerprint
+
+    UnlockPremiumBody:
+      type: object
+      properties:
+        paypalOrderId:
+          type: string
+      required:
+        - paypalOrderId
+
+    CreateOrderBody:
+      type: object
+      properties:
+        analysisId:
+          type: string
+      required:
+        - analysisId
+
+    OrderResult:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          type: string
+      required:
+        - orderId
+        - status
+
+    CaptureOrderBody:
+      type: object
+      properties:
+        orderId:
+          type: string
+        analysisId:
+          type: string
+      required:
+        - orderId
+        - analysisId
+
+    CaptureResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+      required:
+        - success
+        - status
+
+    AnalysisStats:
+      type: object
+      properties:
+        totalAnalyses:
+          type: integer
+        avgOverallScore:
+          type: number
+        avgPacingScore:
+          type: number
+        avgVisualHookScore:
+          type: number
+        avgCaptionScore:
+          type: number
+        premiumUnlocks:
+          type: integer
+      required:
+        - totalAnalyses
+        - avgOverallScore
+        - avgPacingScore
+        - avgVisualHookScore
+        - avgCaptionScore
+        - premiumUnlocks
