@@ -28,18 +28,16 @@ export function useVideoProcessor() {
       if (!ffmpegRef.current) {
         ffmpegRef.current = new FFmpeg();
         ffmpegRef.current.on("progress", ({ progress: p }) => {
-          setProgress(Math.round(p * 100));
+          setProgress(Math.round(Math.min(p * 100, 99)));
         });
         await ffmpegRef.current.load();
       }
-      
+
       const ffmpeg = ffmpegRef.current;
       const fileName = "input.mp4";
       await ffmpeg.writeFile(fileName, await fetchFile(file));
-      
-      // Calculate duration manually since ffprobe output parsing is complex here
-      const durationSeconds = Math.max(1, Math.round(file.size / (1024 * 1024 * 2))); // Very rough estimate just for fallback if needed. In reality, would parse from ffmpeg output, but for now we'll do this. Let's actually use HTMLVideoElement to get exact duration.
-      
+
+      // Get exact duration via HTMLVideoElement
       const actualDuration = await new Promise<number>((resolve) => {
         const video = document.createElement("video");
         video.preload = "metadata";
@@ -47,15 +45,18 @@ export function useVideoProcessor() {
           window.URL.revokeObjectURL(video.src);
           resolve(video.duration);
         };
+        video.onerror = () => resolve(30); // fallback
         video.src = URL.createObjectURL(file);
       });
 
-      // Extract 1 frame every 2 seconds
+      // Extract 1 JPG every 60 frames (fast — only a handful of frames per clip)
+      // -vsync vfr ensures no duplicate frames when the filter skips
       await ffmpeg.exec([
         "-i", fileName,
-        "-vf", "fps=1/2,scale=320:-1", // Extract 1 frame per 2 sec, resize width to 320 to keep size small
-        "-q:v", "2",
-        "frame_%03d.jpg"
+        "-vf", "select='not(mod(n\\,60))',scale=320:-1",
+        "-vsync", "vfr",
+        "-q:v", "3",
+        "frame_%03d.jpg",
       ]);
 
       const frames: string[] = [];
@@ -65,26 +66,29 @@ export function useVideoProcessor() {
         try {
           const data = await ffmpeg.readFile(frameName);
           const base64 = btoa(
-            new Uint8Array(data as Uint8Array).reduce((data, byte) => data + String.fromCharCode(byte), "")
+            new Uint8Array(data as Uint8Array).reduce(
+              (acc, byte) => acc + String.fromCharCode(byte),
+              ""
+            )
           );
           frames.push(base64);
           i++;
-        } catch (e) {
-          break; // No more frames
+        } catch {
+          break; // no more frames
         }
       }
-      
+
+      setProgress(100);
       const fingerprint = await getFingerprint(file);
-      
+
       return {
         frames,
-        audioBase64: null, // Audio extraction can be added later if really needed
+        audioBase64: null,
         fingerprint,
         durationSeconds: Math.round(actualDuration),
       };
     } finally {
       setIsProcessing(false);
-      setProgress(100);
     }
   }, []);
 

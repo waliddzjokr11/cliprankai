@@ -12,6 +12,7 @@ import {
 import { useVideoProcessor } from "@/hooks/useVideoProcessor";
 import { RadialProgress } from "@/components/RadialProgress";
 import { PaypalButton } from "@/components/PaypalButton";
+import { AnalysisSkeleton } from "@/components/AnalysisSkeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -236,10 +237,10 @@ export default function AnalyzerPage() {
             </motion.div>
           )}
 
-          {/* PROCESSING / UPLOADING / ANALYZING */}
-          {(step === "processing" || step === "uploading" || step === "analyzing") && (
+          {/* PROCESSING: ffmpeg frame extraction — radial progress */}
+          {step === "processing" && (
             <motion.div
-              key="loading"
+              key="extracting"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -255,48 +256,33 @@ export default function AnalyzerPage() {
                     strokeWidth="6"
                     strokeLinecap="round"
                     strokeDasharray={2 * Math.PI * 42}
-                    initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
-                    animate={{
-                      strokeDashoffset: step === "processing"
-                        ? 2 * Math.PI * 42 * (1 - progress / 100)
-                        : [2 * Math.PI * 42 * 0.3, 2 * Math.PI * 42 * 0.7],
-                    }}
-                    transition={step !== "processing" ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : {}}
+                    animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - progress / 100) }}
                     style={{ filter: "drop-shadow(0 0 8px hsl(var(--primary) / 0.6))" }}
                   />
                 </svg>
-                {step === "processing" && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-lg font-mono font-bold text-primary">{progress}%</span>
-                  </div>
-                )}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-lg font-mono font-bold text-primary">{progress}%</span>
+                </div>
               </div>
-
               <div className="text-center">
-                <motion.p
-                  key={step}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-xl font-semibold mb-2"
-                >
-                  {getStepLabel()}
-                </motion.p>
-                <p className="text-muted-foreground text-sm">
-                  {step === "processing" && "Extracting 1 frame per 2 seconds client-side..."}
-                  {step === "uploading" && "Sending frames to AI for multimodal analysis..."}
-                  {step === "analyzing" && "GPT-5 is analyzing pacing, hooks, and readability..."}
-                </p>
+                <p className="text-xl font-semibold mb-2">Extracting frames…</p>
+                <p className="text-muted-foreground text-sm">Sampling 1 frame every 60 frames client-side</p>
               </div>
+            </motion.div>
+          )}
 
-              <div className="flex gap-2">
-                {["processing", "uploading", "analyzing"].map((s) => (
-                  <motion.div
-                    key={s}
-                    animate={{ opacity: s === step ? 1 : 0.3, scale: s === step ? 1 : 0.8 }}
-                    className="w-2 h-2 rounded-full bg-primary"
-                  />
-                ))}
-              </div>
+          {/* UPLOADING / ANALYZING: show skeleton that mirrors results layout */}
+          {(step === "uploading" || step === "analyzing") && (
+            <motion.div
+              key="skeleton-phase"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <AnalysisSkeleton
+                label={step === "uploading" ? "Sending frames to AI…" : "Scoring pacing, visual hooks & captions…"}
+              />
             </motion.div>
           )}
 
