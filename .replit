@@ -36,6 +36,7 @@ externalPort = 80
 [userenv.shared]
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_aHVtYW5lLXR1cmtleS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
 PAYPAL_ENV = "production"
+TESTING_UNLIMITED_CREDITS = "true"
 
 [nix]
 channel = "stable-25_05"

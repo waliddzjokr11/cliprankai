@@ -17,6 +17,12 @@ const CREDITS_PER_10S = 1;
 // Admin users always get premium unlocked and are never blocked by credits
 const ADMIN_USER_IDS = new Set(["user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
 
+// ─── TESTING FLAG ────────────────────────────────────────────────────────────
+// Set TESTING_UNLIMITED_CREDITS=true env var to bypass all credit checks.
+// To turn off: delete the env var and restart the API server.
+const TESTING_UNLIMITED_CREDITS = process.env.TESTING_UNLIMITED_CREDITS === "true";
+// ─────────────────────────────────────────────────────────────────────────────
+
 function serializeAnalysis(a: typeof analysesTable.$inferSelect) {
   return {
     id: a.id,
@@ -122,10 +128,10 @@ router.post("/analyze", async (req, res) => {
     req.log.error({ err }, "Cache lookup failed");
   }
 
-  // Credit check (skipped for admin users)
+  // Credit check (skipped for admin users and during testing)
   const isAdmin = ADMIN_USER_IDS.has(userId);
   const required = creditsRequired(durationSeconds);
-  if (!isAdmin) {
+  if (!isAdmin && !TESTING_UNLIMITED_CREDITS) {
     try {
       const [userRow] = await db
         .select()
@@ -315,8 +321,8 @@ Analyze these ${selectedFrames.length} frames — NOTE: no captions in transcrip
 
     const [inserted] = await db.insert(analysesTable).values(analysis).returning();
 
-    // Deduct credits after successful analysis (skipped for admin)
-    if (!isAdmin) {
+    // Deduct credits after successful analysis (skipped for admin and during testing)
+    if (!isAdmin && !TESTING_UNLIMITED_CREDITS) {
       try {
         await db
           .update(userCreditsTable)
