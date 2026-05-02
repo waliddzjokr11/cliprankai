@@ -19,10 +19,22 @@ A multimodal AI-powered video analysis tool for social media creators. Upload a 
 - **Framework**: React + Vite + TypeScript
 - **UI**: Dark Apple-style (#0D0D0D background), glassmorphism cards, Framer Motion animations
 - **CSS**: Tailwind CSS v4 with custom CSS variables for the dark theme
+- **Auth**: Clerk (Replit-managed) — Google OAuth + email/password. Keys in secrets: `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`
 - **Router**: Wouter with base path `/`
+- **Routes**:
+  - `/` — LandingPage (public, signed-in redirects to `/app`)
+  - `/app` — AnalyzerPage (protected, signed-out redirects to `/`)
+  - `/history` — HistoryPage (protected)
+  - `/learn-more` — LearnMorePage (public)
+  - `/pricing` — PricingPage (public)
+  - `/sign-in/*?` — Clerk sign-in (Higgsfield-style split-screen)
+  - `/sign-up/*?` — Clerk sign-up (Higgsfield-style split-screen)
 - **Key pages**:
-  - `src/pages/AnalyzerPage.tsx` — Main upload + AI results page
-  - `src/pages/HistoryPage.tsx` — Past analyses list with stats
+  - `src/pages/LandingPage.tsx` — Public landing page with hero, features, CTA
+  - `src/pages/LearnMorePage.tsx` — Detailed how-it-works documentation
+  - `src/pages/PricingPage.tsx` — 4-tier credit pricing (Free/Starter/Creator/Pro)
+  - `src/pages/AnalyzerPage.tsx` — Main upload + AI results page (protected)
+  - `src/pages/HistoryPage.tsx` — Past analyses list with stats (protected)
 - **Key components**:
   - `src/components/RadialProgress.tsx` — Animated SVG radial score bars (Framer Motion count-up)
   - `src/components/PaypalButton.tsx` — Dynamic PayPal JS SDK integration for $10 unlock

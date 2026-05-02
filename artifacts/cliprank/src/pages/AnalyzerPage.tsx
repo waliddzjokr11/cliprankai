@@ -10,7 +10,7 @@ import {
   getListAnalysesQueryKey,
 } from "@workspace/api-client-react";
 import { useVideoProcessor } from "@/hooks/useVideoProcessor";
-import { useCredits, userId } from "@/hooks/useCredits";
+import { useCredits } from "@/hooks/useCredits";
 import { RadialProgress } from "@/components/RadialProgress";
 import { PaypalButton } from "@/components/PaypalButton";
 import { AnalysisSkeleton } from "@/components/AnalysisSkeleton";
@@ -46,7 +46,7 @@ export default function AnalyzerPage() {
   const analyzeVideo = useAnalyzeVideo();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { credits, creditsRequired, hasEnoughCredits, refetch: refetchCredits } = useCredits();
+  const { userId, credits, creditsRequired, hasEnoughCredits, refetch: refetchCredits } = useCredits();
 
   const { data: stats } = useGetStats({
     query: { queryKey: getGetStatsQueryKey() },
@@ -95,7 +95,7 @@ export default function AnalyzerPage() {
           filename: file.name,
           durationSeconds: result.durationSeconds,
           fingerprint: result.fingerprint,
-          userId,
+          userId: userId ?? "",
         },
       });
 
@@ -575,6 +575,7 @@ export default function AnalyzerPage() {
         onClose={() => { setShowBuyCredits(false); setPendingFile(null); }}
         onPurchased={handleCreditsPurchased}
         currentCredits={credits}
+        userId={userId ?? ""}
       />
     </div>
   );

@@ -1,6 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
+@import "@clerk/themes/shadcn.css";
 @import "tw-animate-css";
+
+/* Clerk placeholder fix on dark bg */
+.cl-formFieldInput::placeholder { color: #52525b; opacity: 1; }
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));

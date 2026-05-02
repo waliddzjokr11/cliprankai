@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, Star, Crown } from "lucide-react";
-import { userId } from "@/hooks/useCredits";
 import { useCreateCreditOrder, useCaptureCreditOrder } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,14 +42,17 @@ interface BuyCreditsModalProps {
   onClose: () => void;
   onPurchased: (newBalance: number) => void;
   currentCredits: number | null;
+  userId: string;
 }
 
 function TierPaypalButton({
   tier,
+  userId,
   onPurchased,
   onClose,
 }: {
   tier: Tier;
+  userId: string;
   onPurchased: (n: number) => void;
   onClose: () => void;
 }) {
@@ -136,7 +138,7 @@ function TierPaypalButton({
   return <div ref={containerRef} className="min-h-[44px] mt-3" />;
 }
 
-export function BuyCreditsModal({ open, onClose, onPurchased, currentCredits }: BuyCreditsModalProps) {
+export function BuyCreditsModal({ open, onClose, onPurchased, currentCredits, userId }: BuyCreditsModalProps) {
   return (
     <AnimatePresence>
       {open && (
@@ -233,6 +235,7 @@ export function BuyCreditsModal({ open, onClose, onPurchased, currentCredits }: 
 
                       <TierPaypalButton
                         tier={tier}
+                        userId={userId}
                         onPurchased={onPurchased}
                         onClose={onClose}
                       />
