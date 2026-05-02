@@ -11,6 +11,7 @@ import ffmpegPath from "ffmpeg-static";
 import { eq, sql } from "drizzle-orm";
 import { db, analysesTable, userCreditsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { logger } from "../lib/logger.js";
 import {
   createJob,
   getJob,
@@ -76,9 +77,10 @@ function getVideoDuration(filePath: string): Promise<number> {
 }
 
 // Hook-first frame extraction strategy:
-// • Pass 1 — Hook zone (first 3s): 2 fps at 640px, q:v 2 → up to 6 high-res hook frames
-// • Pass 2 — Body zone (4s → end): evenly spread up to 19 frames at 640px, q:v 3
-// Returns { hookCount, frames[] } so the AI message can label zones correctly.
+// • Pass 1 — Hook zone (first 3.5s): 2 fps at 640px, q:v 2 → up to 6 high-res hook frames
+// • Pass 2 — Body zone (4s → end): scene-detection first, uniform fallback if < 4 scene frames
+// • Pass 3 — Emergency fallback: fires only if both passes yield 0 frames (unusual codec/format)
+// scale=640:-2 (not -1) ensures even output height, preventing JPEG encoder crashes on portrait videos
 async function extractFrames(
   filePath: string,
   duration: number,
@@ -96,61 +98,77 @@ async function extractFrames(
   const MAX_HOOK = 6;
   const MAX_SPREAD = 19;
 
-  // Pass 1: Hook frames — first 3.5s at 2 fps, 640px wide, high quality
-  await new Promise<void>((resolveP) => {
-    ffmpeg(filePath)
-      .outputOptions([
-        "-t", String(HOOK_END),
-        "-vf", "fps=2,scale=640:-1",
-        "-q:v", "2",
-        "-frames:v", String(MAX_HOOK),
-      ])
-      .output(join(hookDir, "h_%03d.jpg"))
-      .on("end", () => resolveP())
-      .on("error", () => resolveP())
-      .run();
+  // Helper: run a single ffmpeg pass, log errors (never throw)
+  const runPass = (opts: {
+    label: string;
+    inputOpts?: string[];
+    outputOpts: string[];
+    output: string;
+  }): Promise<void> =>
+    new Promise<void>((resolveP) => {
+      const cmd = ffmpeg(filePath);
+      if (opts.inputOpts?.length) cmd.inputOptions(opts.inputOpts);
+      cmd
+        .outputOptions(opts.outputOpts)
+        .output(opts.output)
+        .on("end", () => resolveP())
+        .on("error", (err: Error) => {
+          logger.warn({ err: err.message, label: opts.label, filePath }, "ffmpeg pass failed");
+          resolveP();
+        })
+        .run();
+    });
+
+  // Pass 1: Hook frames — first 3.5s at 2 fps
+  // scale=640:-2 forces even height (avoids JPEG crash on portrait video like 1080×1921)
+  // format=yuvj420p ensures full-range JPEG-compatible pixel format for all codecs
+  await runPass({
+    label: "hook",
+    outputOpts: [
+      "-t", String(HOOK_END),
+      "-vf", "fps=2,scale=640:-2,format=yuvj420p",
+      "-q:v", "2",
+      "-frames:v", String(MAX_HOOK),
+    ],
+    output: join(hookDir, "h_%03d.jpg"),
   });
 
   onProgress(40);
 
-  // Pass 2: Body frames — scene-change-aware sampling from 4s onward.
-  // Uses ffmpeg scene detection (gt(scene,0.25)) to pick frames at actual cuts/transitions
-  // for more representative coverage. Falls back to uniform fps if < 4 scene frames found.
+  // Pass 2: Body frames — scene-change-aware sampling from 4s onward
+  // -ss as INPUT option = fast decode seek (much faster than output-side -ss)
   if (duration > 5) {
     const bodyDuration = duration - 4;
     const uniformFps = Math.min(MAX_SPREAD / bodyDuration, 0.5).toFixed(6);
 
-    // Try scene-detection first
-    await new Promise<void>((resolveP) => {
-      ffmpeg(filePath)
-        .outputOptions([
-          "-ss", "4",
-          "-vf", "select=gt(scene\\,0.22),scale=640:-1,setpts=N/FRAME_RATE/TB",
-          "-vsync", "vfr",
-          "-q:v", "3",
-          "-frames:v", String(MAX_SPREAD),
-        ])
-        .output(join(spreadDir, "scene_%03d.jpg"))
-        .on("end", () => resolveP())
-        .on("error", () => resolveP())
-        .run();
+    // 2a: Scene detection — picks frames at actual cuts/transitions
+    // select='gt(scene,0.22)' threshold: 0=any change, 1=complete scene cut; 0.22 catches most edits
+    await runPass({
+      label: "body-scene",
+      inputOpts: ["-ss", "4"],
+      outputOpts: [
+        "-vf", "select='gt(scene,0.22)',setpts=PTS-STARTPTS,scale=640:-2,format=yuvj420p",
+        "-vsync", "vfr",
+        "-q:v", "3",
+        "-frames:v", String(MAX_SPREAD),
+      ],
+      output: join(spreadDir, "scene_%03d.jpg"),
     });
 
-    // Count scene frames; if too few (static video), supplement with uniform spread
     const sceneCount = readdirSync(spreadDir).filter((f) => f.startsWith("scene_")).length;
+    logger.info({ sceneCount, duration }, "Body scene detection complete");
+
+    // 2b: Uniform fallback — fills gaps for static/talking-head content
     if (sceneCount < 4) {
-      await new Promise<void>((resolveP) => {
-        ffmpeg(filePath)
-          .outputOptions([
-            "-ss", "4",
-            "-vf", `fps=${uniformFps},scale=640:-1`,
-            "-q:v", "3",
-            "-frames:v", String(MAX_SPREAD - sceneCount),
-          ])
-          .output(join(spreadDir, "uniform_%03d.jpg"))
-          .on("end", () => resolveP())
-          .on("error", () => resolveP())
-          .run();
+      await runPass({
+        label: "body-uniform",
+        inputOpts: ["-ss", "4"],
+        outputOpts: [
+          "-vf", `fps=${uniformFps},scale=640:-2,format=yuvj420p`,
+          "-q:v", "3",
+          "-frames:v", String(MAX_SPREAD - sceneCount),
+        ],
+        output: join(spreadDir, "uniform_%03d.jpg"),
       });
     }
   }
@@ -159,6 +177,29 @@ async function extractFrames(
 
   const hookFiles = readdirSync(hookDir).filter((f) => f.endsWith(".jpg")).sort().slice(0, MAX_HOOK);
   const spreadFiles = readdirSync(spreadDir).filter((f) => f.endsWith(".jpg")).sort().slice(0, MAX_SPREAD);
+
+  // Pass 3: Emergency fallback — if BOTH passes yielded 0 frames, try a bare-minimum extraction
+  // This handles unusual codecs, container mismatches, or HDR/10-bit video
+  if (hookFiles.length === 0 && spreadFiles.length === 0) {
+    logger.warn({ filePath, duration }, "Zero frames from all passes — running emergency fallback");
+    const fallbackDir = join(frameDir, "fallback");
+    mkdirSync(fallbackDir, { recursive: true });
+    const fallbackFps = Math.min(10 / Math.max(duration, 1), 1).toFixed(6);
+    await runPass({
+      label: "emergency-fallback",
+      outputOpts: [
+        "-vf", `fps=${fallbackFps},scale=640:-2,format=yuvj420p`,
+        "-q:v", "2",
+        "-frames:v", "10",
+      ],
+      output: join(fallbackDir, "f_%03d.jpg"),
+    });
+    const fallbackFiles = readdirSync(fallbackDir).filter((f) => f.endsWith(".jpg")).sort();
+    logger.info({ fallbackCount: fallbackFiles.length }, "Emergency fallback complete");
+    const frames: string[] = [];
+    for (const f of fallbackFiles) frames.push(readFileSync(join(fallbackDir, f)).toString("base64"));
+    return { frames, hookCount: frames.length };
+  }
 
   const frames: string[] = [];
   for (const f of hookFiles) frames.push(readFileSync(join(hookDir, f)).toString("base64"));
