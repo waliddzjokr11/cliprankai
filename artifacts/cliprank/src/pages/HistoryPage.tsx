@@ -136,17 +136,24 @@ export default function HistoryPage() {
                 </div>
 
                 {/* Score breakdown */}
-                <div className="flex items-center gap-6 text-sm">
+                <div className="hidden sm:flex items-center gap-4 text-sm">
+                  {/* Virality — the #1 metric */}
+                  <div className="text-center pr-4 border-r border-white/10">
+                    <div className={`font-mono font-bold text-base ${getScoreColor(analysis.viralityScore ?? 0)}`}>
+                      {Math.round(analysis.viralityScore ?? 0)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Virality</div>
+                  </div>
                   {[
-                    { label: "Pacing", score: analysis.pacingScore },
                     { label: "Hook", score: analysis.visualHookScore },
-                    { label: "Caption", score: analysis.captionReadabilityScore },
+                    { label: "Pacing", score: analysis.pacingScore },
+                    { label: "Captions", score: analysis.captionReadabilityScore },
                   ].map(({ label, score }) => (
                     <div key={label} className="text-center">
                       <div className={`font-mono font-bold ${getScoreColor(score)}`}>
                         {Math.round(score)}
                       </div>
-                      <div className="text-xs text-muted-foreground">{label}</div>
+                      <div className="text-[10px] text-muted-foreground">{label}</div>
                     </div>
                   ))}
                 </div>

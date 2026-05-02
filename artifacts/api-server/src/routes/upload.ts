@@ -113,23 +113,46 @@ async function extractFrames(
 
   onProgress(40);
 
-  // Pass 2: Spread frames — from 4s to end, evenly sampled, 640px, normal quality
+  // Pass 2: Body frames — scene-change-aware sampling from 4s onward.
+  // Uses ffmpeg scene detection (gt(scene,0.25)) to pick frames at actual cuts/transitions
+  // for more representative coverage. Falls back to uniform fps if < 4 scene frames found.
   if (duration > 5) {
     const bodyDuration = duration - 4;
-    const spreadFps = Math.min(MAX_SPREAD / bodyDuration, 0.5).toFixed(6);
+    const uniformFps = Math.min(MAX_SPREAD / bodyDuration, 0.5).toFixed(6);
+
+    // Try scene-detection first
     await new Promise<void>((resolveP) => {
       ffmpeg(filePath)
         .outputOptions([
           "-ss", "4",
-          "-vf", `fps=${spreadFps},scale=640:-1`,
+          "-vf", "select=gt(scene\\,0.22),scale=640:-1,setpts=N/FRAME_RATE/TB",
+          "-vsync", "vfr",
           "-q:v", "3",
           "-frames:v", String(MAX_SPREAD),
         ])
-        .output(join(spreadDir, "s_%03d.jpg"))
+        .output(join(spreadDir, "scene_%03d.jpg"))
         .on("end", () => resolveP())
         .on("error", () => resolveP())
         .run();
     });
+
+    // Count scene frames; if too few (static video), supplement with uniform spread
+    const sceneCount = readdirSync(spreadDir).filter((f) => f.startsWith("scene_")).length;
+    if (sceneCount < 4) {
+      await new Promise<void>((resolveP) => {
+        ffmpeg(filePath)
+          .outputOptions([
+            "-ss", "4",
+            "-vf", `fps=${uniformFps},scale=640:-1`,
+            "-q:v", "3",
+            "-frames:v", String(MAX_SPREAD - sceneCount),
+          ])
+          .output(join(spreadDir, "uniform_%03d.jpg"))
+          .on("end", () => resolveP())
+          .on("error", () => resolveP())
+          .run();
+      });
+    }
   }
 
   onProgress(85);

@@ -55,7 +55,7 @@ const features = [
 ];
 
 const steps = [
-  { n: "01", title: "Upload your video", desc: "Drop any MP4, MOV, AVI or WebM clip. No size limits in your plan." },
+  { n: "01", title: "Upload your video", desc: "Drop any MP4, MOV, AVI or WebM clip up to 500 MB. Instant cache hit for re-uploads." },
   { n: "02", title: "AI extracts & analyzes frames", desc: "Frames are sampled adaptively and sent to GPT-4 vision for frame-by-frame analysis." },
   { n: "03", title: "Get actionable scores", desc: "Receive pacing, visual hook, and caption scores with specific feedback you can act on immediately." },
 ];

@@ -169,6 +169,11 @@ export default function AnalyzerPage() {
       toast({ title: "Invalid file", description: "Please upload a video file.", variant: "destructive" });
       return;
     }
+    const MAX_SIZE = 500 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast({ title: "File too large", description: `Maximum file size is 500 MB. Your file is ${(file.size / 1024 / 1024).toFixed(0)} MB.`, variant: "destructive" });
+      return;
+    }
 
     setCurrentFilename(file.name);
     setStep("processing");
@@ -402,12 +407,13 @@ export default function AnalyzerPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center min-h-[60vh]"
+              className="flex flex-col items-center justify-center min-h-[60vh] px-4"
             >
               <AnalysisProgress
                 currentStep={uploadProgress.step === "idle" || uploadProgress.step === "done" || uploadProgress.step === "error" ? "uploading" : uploadProgress.step}
                 progressPct={uploadProgress.pct}
                 filename={currentFilename}
+                onCancel={resetAnalyzer}
               />
             </motion.div>
           )}

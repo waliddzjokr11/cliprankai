@@ -32,16 +32,28 @@ const STEP_LABELS: Record<UploadStep, string> = {
   error: "Failed",
 };
 
+// Max time to wait with no SSE event before treating as stuck (3 min)
+const SSE_TIMEOUT_MS = 3 * 60 * 1000;
+
 export function useVideoUpload() {
   const [progress, setProgress] = useState<UploadProgress>({ step: "idle", pct: 0, label: STEP_LABELS.idle });
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  const sseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSseTimeout = () => {
+    if (sseTimeoutRef.current) {
+      clearTimeout(sseTimeoutRef.current);
+      sseTimeoutRef.current = null;
+    }
+  };
 
   const reset = useCallback(() => {
     xhrRef.current?.abort();
     esRef.current?.close();
+    clearSseTimeout();
     setProgress({ step: "idle", pct: 0, label: STEP_LABELS.idle });
     setAnalysisId(null);
     setError(null);
@@ -99,18 +111,35 @@ export function useVideoUpload() {
           const es = new EventSource(`${basePath}/api/videos/jobs/${jobId}/stream`);
           esRef.current = es;
 
+          // Watchdog: if no event arrives in SSE_TIMEOUT_MS, fail gracefully
+          const resetSseTimeout = () => {
+            clearSseTimeout();
+            sseTimeoutRef.current = setTimeout(() => {
+              es.close();
+              const msg = "Processing timed out. Please try again.";
+              setError(msg);
+              setProgress({ step: "error", pct: 0, label: msg });
+              reject(new Error(msg));
+            }, SSE_TIMEOUT_MS);
+          };
+          resetSseTimeout();
+
           es.onmessage = (e) => {
+            // Any message resets the inactivity timer
+            resetSseTimeout();
             try {
               const data = JSON.parse(e.data);
               if (data.type === "progress") {
                 const s = data.step as UploadStep;
                 setProgress({ step: s, pct: data.pct ?? 0, label: data.label ?? STEP_LABELS[s] });
               } else if (data.type === "done") {
+                clearSseTimeout();
                 es.close();
                 setAnalysisId(data.analysisId);
                 setProgress({ step: "done", pct: 100, label: STEP_LABELS.done });
                 resolve({ analysisId: data.analysisId, durationSeconds: data.durationSeconds ?? 0 });
               } else if (data.type === "error") {
+                clearSseTimeout();
                 es.close();
                 const msg = data.message ?? "Processing failed";
                 setError(msg);
@@ -123,6 +152,7 @@ export function useVideoUpload() {
           };
 
           es.onerror = () => {
+            clearSseTimeout();
             es.close();
             const msg = "Connection lost during processing";
             setError(msg);

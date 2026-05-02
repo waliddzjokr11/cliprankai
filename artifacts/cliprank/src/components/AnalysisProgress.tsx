@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Loader2,
   Film,
+  X,
 } from "lucide-react";
 import type { UploadStep } from "@/hooks/useVideoUpload";
 
@@ -16,6 +17,8 @@ interface StepConfig {
   icon: React.ReactNode;
   label: string;
   sublabel: string;
+  // Approximate share of total processing time (for smooth progress bar)
+  weight: number;
 }
 
 const STEPS: StepConfig[] = [
@@ -24,48 +27,65 @@ const STEPS: StepConfig[] = [
     icon: <Upload className="w-4 h-4" />,
     label: "Uploading video",
     sublabel: "Streaming to server for processing",
+    weight: 10,
   },
   {
     id: "extracting",
     icon: <Film className="w-4 h-4" />,
     label: "Extracting frames",
-    sublabel: "Dense hook sampling + spread across full video",
+    sublabel: "Hook-zone dense sampling + scene-aware body frames",
+    weight: 20,
   },
   {
     id: "transcribing",
     icon: <Mic className="w-4 h-4" />,
     label: "Transcribing audio",
-    sublabel: "Extracting speech for caption analysis",
+    sublabel: "Full-video speech extraction for caption analysis",
+    weight: 15,
   },
   {
     id: "scoring",
     icon: <Sparkles className="w-4 h-4" />,
     label: "Scoring virality",
-    sublabel: "Hook · Pacing · Captions · Platform signals",
+    sublabel: "Hook · Pacing · Captions · Virality — GPT-4o vision",
+    weight: 45,
   },
   {
     id: "researching",
     icon: <Users className="w-4 h-4" />,
     label: "Mapping viral patterns",
-    sublabel: "Comparing to top creators in your niche",
+    sublabel: "Comparing against top creators in your niche",
+    weight: 10,
   },
 ];
 
-// Steps that appear in progress order
 const STEP_ORDER: UploadStep[] = ["uploading", "extracting", "transcribing", "scoring", "researching"];
 
 function getStepIndex(step: UploadStep): number {
   return STEP_ORDER.indexOf(step);
 }
 
+// Compute overall progress % using time-weighted step sizes
+function computeWeightedProgress(currentStep: UploadStep, stepPct: number): number {
+  const idx = getStepIndex(currentStep);
+  if (idx < 0) return 0;
+  const totalWeight = STEPS.reduce((s, st) => s + st.weight, 0);
+  const completedWeight = STEPS.slice(0, idx).reduce((s, st) => s + st.weight, 0);
+  const currentStepWeight = STEPS[idx]?.weight ?? 0;
+  const fraction = completedWeight + (currentStepWeight * stepPct) / 100;
+  return Math.round((fraction / totalWeight) * 100);
+}
+
 interface Props {
   currentStep: UploadStep;
   progressPct: number;
   filename?: string;
+  onCancel?: () => void;
 }
 
-export function AnalysisProgress({ currentStep, progressPct, filename }: Props) {
+export function AnalysisProgress({ currentStep, progressPct, filename, onCancel }: Props) {
   const currentIdx = Math.max(0, getStepIndex(currentStep));
+  const overallPct = computeWeightedProgress(currentStep, progressPct);
 
   return (
     <motion.div
@@ -73,14 +93,25 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -24 }}
       transition={{ duration: 0.4 }}
-      className="max-w-lg mx-auto"
+      className="max-w-lg mx-auto w-full"
     >
-      {filename && (
-        <div className="mb-8 text-center">
+      {/* Header: filename + cancel */}
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div className="text-center flex-1">
           <p className="text-sm text-zinc-500">Analyzing</p>
           <p className="text-white font-semibold mt-0.5 truncate max-w-xs mx-auto">{filename}</p>
         </div>
-      )}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-zinc-500 hover:text-white hover:border-white/20 transition-colors"
+            title="Cancel upload"
+          >
+            <X className="w-3.5 h-3.5" />
+            Cancel
+          </button>
+        )}
+      </div>
 
       <div className="space-y-1">
         {STEPS.map((step, idx) => {
@@ -98,7 +129,7 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
                 isActive ? "bg-white/[0.06] border border-white/10" : "bg-transparent"
               }`}
             >
-              {/* Icon column */}
+              {/* Icon */}
               <div className="flex-shrink-0 mt-0.5">
                 {isDone ? (
                   <motion.div
@@ -124,7 +155,7 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
                 )}
               </div>
 
-              {/* Text column */}
+              {/* Text */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span
@@ -157,7 +188,7 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
                   </div>
                 )}
 
-                {/* Frame extraction progress bar */}
+                {/* Extraction progress bar */}
                 {isActive && step.id === "extracting" && progressPct > 0 && (
                   <div className="mt-2">
                     <div className="flex justify-between text-xs text-zinc-500 mb-1">
@@ -174,9 +205,9 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
                   </div>
                 )}
 
-                {/* Animated sub-dots for scoring step */}
+                {/* Scoring dimension chips */}
                 {isActive && step.id === "scoring" && (
-                  <div className="flex gap-1 mt-2">
+                  <div className="flex gap-1 mt-2 flex-wrap">
                     {["Hook", "Pacing", "Captions", "Virality"].map((label, i) => (
                       <motion.span
                         key={label}
@@ -191,7 +222,7 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
                   </div>
                 )}
 
-                {/* Animated platform badges for researching step */}
+                {/* Platform badges for researching step */}
                 {isActive && step.id === "researching" && (
                   <div className="flex gap-1 mt-2">
                     {["TikTok", "Reels", "Shorts"].map((platform, i) => (
@@ -213,18 +244,18 @@ export function AnalysisProgress({ currentStep, progressPct, filename }: Props) 
         })}
       </div>
 
-      {/* Overall animated progress bar */}
+      {/* Time-weighted overall progress bar */}
       <div className="mt-6">
         <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
-            animate={{ width: `${Math.round(((currentIdx + 1) / STEPS.length) * 100)}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            animate={{ width: `${overallPct}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </div>
         <div className="flex justify-between mt-1 text-[10px] text-zinc-600">
-          <span>Step {currentIdx + 1} of {STEPS.length}</span>
-          <span>{Math.round(((currentIdx + 1) / STEPS.length) * 100)}% complete</span>
+          <span>{STEPS[currentIdx]?.label}</span>
+          <span>{overallPct}% complete</span>
         </div>
       </div>
     </motion.div>
