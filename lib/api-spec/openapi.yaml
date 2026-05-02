@@ -293,6 +293,21 @@ components:
           type: integer
         createdAt:
           type: string
+        niche:
+          type: string
+          nullable: true
+        nichePlatform:
+          type: string
+          nullable: true
+        viralityScore:
+          type: number
+          nullable: true
+        competitorInsights:
+          type: string
+          nullable: true
+        retentionRisk:
+          type: string
+          nullable: true
       required:
         - id
         - filename

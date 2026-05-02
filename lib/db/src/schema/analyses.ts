@@ -22,6 +22,12 @@ export const analysesTable = pgTable("analyses", {
   frameCount: integer("frame_count").notNull().default(0),
   paypalOrderId: text("paypal_order_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Virality & niche analysis (v2)
+  niche: text("niche"),
+  nichePlatform: text("niche_platform"),
+  viralityScore: real("virality_score"),
+  competitorInsights: text("competitor_insights"),
+  retentionRisk: text("retention_risk"),
 });
 
 export const insertAnalysisSchema = createInsertSchema(analysesTable).omit({ createdAt: true });

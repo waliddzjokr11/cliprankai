@@ -28,6 +28,11 @@ export interface VideoAnalysis {
   durationSeconds: number;
   frameCount: number;
   createdAt: string;
+  niche?: string | null;
+  nichePlatform?: string | null;
+  viralityScore?: number | null;
+  competitorInsights?: string | null;
+  retentionRisk?: string | null;
 }
 
 export interface AnalyzeVideoBody {

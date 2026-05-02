@@ -37,6 +37,11 @@ export const ListAnalysesResponseItem = zod.object({
   durationSeconds: zod.number(),
   frameCount: zod.number(),
   createdAt: zod.string(),
+  niche: zod.string().nullish(),
+  nichePlatform: zod.string().nullish(),
+  viralityScore: zod.number().nullish(),
+  competitorInsights: zod.string().nullish(),
+  retentionRisk: zod.string().nullish(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
 
@@ -74,6 +79,11 @@ export const AnalyzeVideoResponse = zod.object({
   durationSeconds: zod.number(),
   frameCount: zod.number(),
   createdAt: zod.string(),
+  niche: zod.string().nullish(),
+  nichePlatform: zod.string().nullish(),
+  viralityScore: zod.number().nullish(),
+  competitorInsights: zod.string().nullish(),
+  retentionRisk: zod.string().nullish(),
 });
 
 /**
@@ -102,6 +112,11 @@ export const GetAnalysisResponse = zod.object({
   durationSeconds: zod.number(),
   frameCount: zod.number(),
   createdAt: zod.string(),
+  niche: zod.string().nullish(),
+  nichePlatform: zod.string().nullish(),
+  viralityScore: zod.number().nullish(),
+  competitorInsights: zod.string().nullish(),
+  retentionRisk: zod.string().nullish(),
 });
 
 /**
@@ -134,6 +149,11 @@ export const UnlockPremiumResponse = zod.object({
   durationSeconds: zod.number(),
   frameCount: zod.number(),
   createdAt: zod.string(),
+  niche: zod.string().nullish(),
+  nichePlatform: zod.string().nullish(),
+  viralityScore: zod.number().nullish(),
+  competitorInsights: zod.string().nullish(),
+  retentionRisk: zod.string().nullish(),
 });
 
 /**

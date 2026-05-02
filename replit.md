@@ -1,6 +1,6 @@
 # ClipRank — Multimodal AI Video Analyzer
 
-A multimodal AI-powered video analysis tool for social media creators. Upload a video clip and get frame-level AI scoring of pacing, visual hooks, and caption readability. Premium professional advice and visual heatmap unlock for $10 via PayPal.
+A multimodal AI-powered video analysis tool for social media creators. Upload a video clip and get a calibrated virality score based on real TikTok/Reels/Shorts algorithm signals — not generic AI ratings. Includes niche detection, competitor pattern analysis, retention risk breakdown, and professional advice.
 
 ## Architecture
 
@@ -37,6 +37,7 @@ A multimodal AI-powered video analysis tool for social media creators. Upload a 
   - `src/pages/HistoryPage.tsx` — Past analyses list with stats (protected)
 - **Key components**:
   - `src/components/RadialProgress.tsx` — Animated SVG radial score bars (Framer Motion count-up)
+  - `src/components/AnalysisProgress.tsx` — Step-by-step progress timeline (reading → extracting → sending → transcribing → scoring → researching)
   - `src/components/PaypalButton.tsx` — Dynamic PayPal JS SDK integration for $10 unlock
   - `src/hooks/useVideoProcessor.ts` — ffmpeg-wasm client-side frame extraction (1 frame/2s, max 20 frames)
 - **API Client**: `@workspace/api-client-react` — auto-generated React Query hooks from OpenAPI spec

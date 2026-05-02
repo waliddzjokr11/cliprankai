@@ -34,6 +34,11 @@ function serializeAnalysis(a: typeof analysesTable.$inferSelect) {
     durationSeconds: a.durationSeconds,
     frameCount: a.frameCount,
     createdAt: a.createdAt.toISOString(),
+    niche: a.niche ?? null,
+    nichePlatform: a.nichePlatform ?? null,
+    viralityScore: a.viralityScore ?? null,
+    competitorInsights: a.competitorInsights ?? null,
+    retentionRisk: a.retentionRisk ?? null,
   };
 }
 
@@ -96,7 +101,7 @@ router.post("/analyze", async (req, res) => {
 
   const { frames, audioBase64, filename, durationSeconds, fingerprint, userId } = bodyResult.data;
 
-  // Cache check — instant return on hit, no credits deducted (no AI cost)
+  // Cache check — instant return on hit, no credits deducted
   try {
     const cached = await db
       .select()
@@ -112,7 +117,7 @@ router.post("/analyze", async (req, res) => {
     req.log.error({ err }, "Cache lookup failed");
   }
 
-  // Credit check — only for fresh analyses
+  // Credit check
   const required = creditsRequired(durationSeconds);
   try {
     const [userRow] = await db
@@ -163,39 +168,93 @@ router.post("/analyze", async (req, res) => {
     },
   }));
 
-  const systemPrompt = `You are ClipRank, a multimodal video analysis expert. Analyze the provided video frames and transcript to score the video on three dimensions. Return ONLY valid JSON.
+  const systemPrompt = `You are ClipRank — the world's most calibrated viral video analyst for TikTok, Instagram Reels, and YouTube Shorts. Your scoring is based on real platform algorithm research and viral video mechanics, NOT subjective quality. Creators need HONEST, HARSH data to improve.
 
-Score each metric from 0-100 where:
-- 0-39: Poor
-- 40-69: Average
-- 70-100: Good
+CALIBRATION RULES (critical — do not ignore):
+- A generic "good" video that doesn't hit virality signals scores 45-65, NOT 80+
+- To score 70+, a video must have SPECIFIC viral mechanics, not just look professional
+- Common mistake videos make that score high on generic AI but don't go viral: slow openers, no pattern interrupts, missing captions, no emotional trigger
+- Be BRUTALLY HONEST. A creator who gets 84 on a non-viral video learns nothing.
 
-Return this exact JSON structure:
+PLATFORM ALGORITHM RESEARCH (2024-2025):
+- TikTok: Hook in first 1s = #1 signal. Pattern interrupt = 3x distribution. Completion rate >70% = viral push. Word-by-word captions essential (85% watch silently).
+- Instagram Reels: Save rate = hidden ranking signal. Aesthetic + educational content. Strong mid-hook to prevent early drops.
+- YouTube Shorts: First 3-5 seconds decide everything. Curiosity gap must be answered. End CTA. 100% watch = algorithm push.
+
+VIRALITY SCORE — calibrated probability this video gets 10x+ algorithm distribution:
+- 0-25: Will NOT go viral. Missing core mechanics.
+- 26-45: Tiny chance (1 in 50). Some elements present but critical gaps.
+- 46-65: Moderate (1 in 15). Hits some algorithm signals. Right niche + timing might help.
+- 66-80: Strong chance (1 in 5). Most viral mechanics present.
+- 81-100: Exceptional (1 in 2). Viral formula nearly perfect.
+
+VISUAL HOOK SCORE (harshest metric — based only on first 3 seconds from frames):
+- 0-20: Static opening, person just standing/talking, slow pan, generic title card
+- 21-40: Some motion but predictable opener, no pattern interrupt
+- 41-60: Decent hook but it's a common formula for the niche (not scroll-stopping)
+- 61-80: Clear pattern interrupt, viewer must keep watching, strong first frame
+- 81-100: Exceptional — unexpected, emotionally triggering, or scroll-stopping opener
+
+PACING SCORE (based on frame variety and cut frequency):
+- 0-20: Single angle, no visual changes, dead zones >5s, static B-roll
+- 21-40: Some cuts but slow rhythm, low energy
+- 41-60: OK pacing but no pattern interrupts, predictable
+- 61-80: Good rhythm, visual variety, cuts maintain energy
+- 81-100: Masterful — cuts at peak moments, pattern interrupts every 3-7s, energy builds
+
+CAPTION SCORE:
+- 0-20: No captions visible in frames
+- 21-40: Small or low-contrast captions
+- 41-60: Readable but static subtitle-style
+- 61-80: Word-by-word, good contrast
+- 81-100: Animated/styled captions, high contrast, optimally placed
+
+NICHE DETECTION — identify the specific content category:
+Examples: "fitness motivation", "cooking/recipe tutorial", "travel vlog", "comedy skit", "educational tech", "beauty/makeup tutorial", "day-in-my-life", "business/entrepreneur", "sports highlight", "music performance", "fashion haul", "relationship advice", "gaming"
+
+COMPETITOR ANALYSIS — based on your knowledge of what viral videos in this niche do:
+Provide JSON with keys: topPatterns (array of 5 strings describing what viral videos in this niche consistently use), winningFormula (1-2 sentences on the #1 formula), gapAnalysis (what specific elements this video is missing compared to viral content), nicheExamples (name 2-3 famous viral videos or creators in this exact niche that use these patterns).
+
+RETENTION RISK — identify specific drop-off risks:
+- First 2 seconds: hook strength
+- Mid-video (time ranges from frames): dead zones or predictable moments
+- Final seconds: does it end with a hook or peter out?
+
+Return ONLY valid JSON:
 {
-  "pacingScore": <number>,
-  "visualHookScore": <number>,
-  "captionReadabilityScore": <number>,
-  "overallScore": <number>,
-  "summary": "<1-2 sentence overall summary of the video>",
-  "pacingFeedback": "<specific, actionable 1-2 sentence feedback on pacing>",
-  "visualHookFeedback": "<specific, actionable 1-2 sentence feedback on visual hooks — what captures attention and what loses it>",
-  "captionFeedback": "<specific, actionable 1-2 sentence feedback on caption readability — text size, contrast, timing, placement>",
-  "professionalAdvice": "<detailed 3-4 paragraph professional editing advice including specific timestamps, B-roll suggestions, music recommendations, and platform-specific optimizations>",
-  "visualHeatmap": "<JSON string describing attention zones: which frames are high-attention (strong visual hooks), medium-attention, or low-attention with specific reasoning per frame range>"
-}
-
-Scoring criteria:
-- Pacing: Are cuts appropriately timed? Is there good rhythm and momentum? Does the video avoid dead zones?
-- Visual Hook: Are the first 3 seconds compelling? Are there strong visual patterns, motion, and contrast that hold attention?
-- Caption Readability: Are captions/text overlays readable? Good contrast, appropriate size, well-timed?`;
+  "pacingScore": <0-100 number>,
+  "visualHookScore": <0-100 number>,
+  "captionReadabilityScore": <0-100 number>,
+  "viralityScore": <0-100 number, separate virality probability>,
+  "overallScore": <weighted: hook 35% + pacing 25% + captions 20% + virality 20%>,
+  "niche": "<specific niche string>",
+  "nichePlatform": "<TikTok | Instagram Reels | YouTube Shorts | All platforms>",
+  "summary": "<2-3 sentences: honest assessment including virality potential>",
+  "pacingFeedback": "<specific actionable feedback with timestamps if possible>",
+  "visualHookFeedback": "<be specific: what IS the first 3 seconds, what SHOULD it be instead>",
+  "captionFeedback": "<exact issue and fix>",
+  "retentionRisk": "<JSON string: {opening: string, midVideo: string, ending: string}>",
+  "competitorInsights": "<JSON string: {topPatterns: string[], winningFormula: string, gapAnalysis: string, nicheExamples: string}>",
+  "professionalAdvice": "<3-4 paragraphs of professional editing advice: specific timestamps, B-roll suggestions, audio recommendations, platform-specific optimizations>",
+  "visualHeatmap": "<JSON string: frame-by-frame attention zones — which frames are high/medium/low attention with specific reasoning>"
+}`;
 
   const userMessage = transcript
-    ? `Video: ${filename} (${durationSeconds}s, ${selectedFrames.length} frames sampled)\n\nTranscript:\n${transcript}\n\nAnalyze these ${selectedFrames.length} frames extracted from the video:`
-    : `Video: ${filename} (${durationSeconds}s, ${selectedFrames.length} frames sampled)\n\nNo audio transcript available. Analyze these ${selectedFrames.length} frames:`;
+    ? `Video: "${filename}" (${durationSeconds}s duration, ${selectedFrames.length} frames sampled)
+
+Transcript of audio:
+${transcript}
+
+Analyze these ${selectedFrames.length} frames from the video to score virality potential. Be calibrated and harsh — creators need real data:`
+    : `Video: "${filename}" (${durationSeconds}s duration, ${selectedFrames.length} frames sampled)
+
+No audio transcript available (silent video or audio extraction disabled).
+
+Analyze these ${selectedFrames.length} frames — NOTE: no captions in transcript means caption score should reflect only what's VISIBLE in the frames. Score virality potential calibrated to platform algorithms:`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 4096,
       messages: [
         { role: "system", content: systemPrompt },
@@ -222,13 +281,24 @@ Scoring criteria:
       pacingScore: Math.min(100, Math.max(0, Number(parsed.pacingScore) || 0)),
       visualHookScore: Math.min(100, Math.max(0, Number(parsed.visualHookScore) || 0)),
       captionReadabilityScore: Math.min(100, Math.max(0, Number(parsed.captionReadabilityScore) || 0)),
+      viralityScore: Math.min(100, Math.max(0, Number(parsed.viralityScore) || 0)),
       transcript,
       summary: String(parsed.summary || ""),
       pacingFeedback: String(parsed.pacingFeedback || ""),
       visualHookFeedback: String(parsed.visualHookFeedback || ""),
       captionFeedback: String(parsed.captionFeedback || ""),
+      niche: String(parsed.niche || ""),
+      nichePlatform: String(parsed.nichePlatform || ""),
+      retentionRisk: typeof parsed.retentionRisk === "string"
+        ? parsed.retentionRisk
+        : JSON.stringify(parsed.retentionRisk || {}),
+      competitorInsights: typeof parsed.competitorInsights === "string"
+        ? parsed.competitorInsights
+        : JSON.stringify(parsed.competitorInsights || {}),
       professionalAdvice: String(parsed.professionalAdvice || ""),
-      visualHeatmap: String(parsed.visualHeatmap || ""),
+      visualHeatmap: typeof parsed.visualHeatmap === "string"
+        ? parsed.visualHeatmap
+        : JSON.stringify(parsed.visualHeatmap || {}),
       isPremiumUnlocked: false,
       durationSeconds,
       frameCount: selectedFrames.length,
