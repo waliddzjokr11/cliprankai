@@ -178,18 +178,6 @@ export default function AuthPage() {
     setCode(val);
   };
 
-  const handleOAuth = async (provider: string) => {
-    if (!signIn) return;
-    try {
-      await signIn.authenticateWithRedirect({
-        strategy: `oauth_${provider}` as any,
-        redirectUrl: `${window.location.origin}${basePath}/sso-callback`,
-        redirectUrlComplete: `${window.location.origin}${basePath}/app`,
-      });
-    } catch {
-      setErrorMsg("OAuth failed. Please use email instead.");
-    }
-  };
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0a]">
@@ -250,28 +238,6 @@ export default function AuthPage() {
                   </button>
                 </form>
 
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-xs text-zinc-600">or continue with</span>
-                  <div className="flex-1 h-px bg-white/10" />
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {[
-                    { name: "Google", logo: "https://www.svgrepo.com/show/475656/google-color.svg", provider: "google" },
-                    { name: "GitHub", logo: "https://www.svgrepo.com/show/512317/github-142.svg", provider: "github" },
-                  ].map((p) => (
-                    <button
-                      key={p.name}
-                      type="button"
-                      onClick={() => handleOAuth(p.provider)}
-                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white text-sm font-medium transition-colors"
-                    >
-                      <img src={p.logo} className="w-4 h-4" alt={p.name} />
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
               </motion.div>
             ) : (
               <motion.div
