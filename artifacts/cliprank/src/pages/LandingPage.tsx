@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Zap, BarChart3, Film, Clock, ArrowRight, ChevronRight, Star } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -62,6 +63,7 @@ const steps = [
 
 export default function LandingPage() {
   const [, nav] = useLocation();
+  usePageTitle("", "AI-powered video analysis for TikTok, Reels & Shorts. Get a calibrated virality score based on real algorithm signals — pacing, hook strength, captions, and more. Free to start.");
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">

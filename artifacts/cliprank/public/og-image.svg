@@ -1,0 +1,117 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#0d0d12"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="65%" cy="40%" r="55%" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="20%" cy="70%" r="35%" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="cardClip">
+      <rect x="620" y="110" width="500" height="400" rx="20"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <!-- Grid lines subtle -->
+  <line x1="0" y1="315" x2="1200" y2="315" stroke="white" stroke-opacity="0.03" stroke-width="1"/>
+  <line x1="600" y1="0" x2="600" y2="630" stroke="white" stroke-opacity="0.03" stroke-width="1"/>
+
+  <!-- Logo icon -->
+  <rect x="80" y="80" width="56" height="56" rx="14" fill="#6366f1" fill-opacity="0.2"/>
+  <rect x="80" y="80" width="56" height="56" rx="14" fill="none" stroke="#6366f1" stroke-opacity="0.5" stroke-width="1.5"/>
+  <!-- Zap icon simplified -->
+  <polygon points="108,95 100,113 107,113 96,133 116,111 108,111 119,95" fill="#818cf8"/>
+
+  <!-- Logo text -->
+  <text x="152" y="117" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="white" letter-spacing="-0.5">ClipRank</text>
+  <text x="152" y="117" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="none">
+    <tspan fill="#818cf8">AI</tspan>
+  </text>
+  <text x="300" y="117" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#818cf8">AI</text>
+
+  <!-- Badge -->
+  <rect x="80" y="170" width="228" height="30" rx="15" fill="white" fill-opacity="0.06"/>
+  <rect x="80" y="170" width="228" height="30" rx="15" fill="none" stroke="white" stroke-opacity="0.1" stroke-width="1"/>
+  <circle cx="99" cy="185" r="5" fill="#34d399"/>
+  <text x="112" y="190" font-family="Inter, system-ui, sans-serif" font-size="13" fill="#a1a1aa" letter-spacing="0.2">AI-powered video intelligence</text>
+
+  <!-- Main headline -->
+  <text x="80" y="275" font-family="Inter, system-ui, sans-serif" font-size="58" font-weight="800" fill="white" letter-spacing="-2">Know if your</text>
+  <text x="80" y="345" font-family="Inter, system-ui, sans-serif" font-size="58" font-weight="800" fill="white" letter-spacing="-2">video will</text>
+  <text x="80" y="415" font-family="Inter, system-ui, sans-serif" font-size="58" font-weight="800" fill="#818cf8" letter-spacing="-2">go viral.</text>
+
+  <!-- Subtext -->
+  <text x="80" y="480" font-family="Inter, system-ui, sans-serif" font-size="20" fill="#71717a">Score pacing · visual hook · captions</text>
+  <text x="80" y="508" font-family="Inter, system-ui, sans-serif" font-size="20" fill="#71717a">before you hit publish.</text>
+
+  <!-- CTA -->
+  <rect x="80" y="543" width="210" height="44" rx="10" fill="#6366f1"/>
+  <text x="185" y="570" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="600" fill="white" text-anchor="middle">Start free →</text>
+
+  <!-- Right: Score card -->
+  <rect x="620" y="90" width="500" height="430" rx="20" fill="white" fill-opacity="0.03"/>
+  <rect x="620" y="90" width="500" height="430" rx="20" fill="none" stroke="white" stroke-opacity="0.08" stroke-width="1.5"/>
+
+  <!-- Card header -->
+  <rect x="644" y="114" width="36" height="36" rx="9" fill="#6366f1" fill-opacity="0.2"/>
+  <rect x="644" y="114" width="36" height="36" rx="9" fill="none" stroke="#6366f1" stroke-opacity="0.4" stroke-width="1"/>
+  <polygon points="662,121 657,130 661,130 655,143 669,130 664,130 670,121" fill="#818cf8" transform="scale(0.75) translate(229,40)"/>
+  <text x="690" y="133" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="white">hook_video_final.mp4</text>
+  <text x="690" y="151" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#71717a">45s · 15 frames analyzed</text>
+
+  <!-- Big score -->
+  <text x="1070" y="148" font-family="Inter, system-ui, sans-serif" font-size="38" font-weight="800" fill="#818cf8" text-anchor="middle">82</text>
+
+  <!-- Divider -->
+  <line x1="644" y1="170" x2="1096" y2="170" stroke="white" stroke-opacity="0.07" stroke-width="1"/>
+
+  <!-- Virality score row -->
+  <text x="644" y="205" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#71717a" letter-spacing="1">VIRALITY SCORE</text>
+  <text x="1096" y="205" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#10b981" text-anchor="end">74</text>
+  <rect x="644" y="212" width="430" height="6" rx="3" fill="white" fill-opacity="0.06"/>
+  <rect x="644" y="212" width="318" height="6" rx="3" fill="#10b981"/>
+
+  <!-- Pacing row -->
+  <text x="644" y="255" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#71717a" letter-spacing="1">PACING</text>
+  <text x="1096" y="255" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#34d399" text-anchor="end">87</text>
+  <rect x="644" y="262" width="430" height="6" rx="3" fill="white" fill-opacity="0.06"/>
+  <rect x="644" y="262" width="374" height="6" rx="3" fill="#34d399"/>
+
+  <!-- Hook row -->
+  <text x="644" y="305" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#71717a" letter-spacing="1">VISUAL HOOK</text>
+  <text x="1096" y="305" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#6366f1" text-anchor="end">63</text>
+  <rect x="644" y="312" width="430" height="6" rx="3" fill="white" fill-opacity="0.06"/>
+  <rect x="644" y="312" width="271" height="6" rx="3" fill="#6366f1"/>
+
+  <!-- Captions row -->
+  <text x="644" y="355" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#71717a" letter-spacing="1">CAPTIONS</text>
+  <text x="1096" y="355" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#a78bfa" text-anchor="end">91</text>
+  <rect x="644" y="362" width="430" height="6" rx="3" fill="white" fill-opacity="0.06"/>
+  <rect x="644" y="362" width="391" height="6" rx="3" fill="#a78bfa"/>
+
+  <!-- Pills row -->
+  <rect x="644" y="395" width="130" height="28" rx="14" fill="white" fill-opacity="0.05"/>
+  <rect x="644" y="395" width="130" height="28" rx="14" fill="none" stroke="white" stroke-opacity="0.08" stroke-width="1"/>
+  <text x="709" y="413" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#a1a1aa" text-anchor="middle">Frame-level AI</text>
+
+  <rect x="784" y="395" width="132" height="28" rx="14" fill="white" fill-opacity="0.05"/>
+  <rect x="784" y="395" width="132" height="28" rx="14" fill="none" stroke="white" stroke-opacity="0.08" stroke-width="1"/>
+  <text x="850" y="413" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#a1a1aa" text-anchor="middle">Virality scored</text>
+
+  <rect x="926" y="395" width="140" height="28" rx="14" fill="white" fill-opacity="0.05"/>
+  <rect x="926" y="395" width="140" height="28" rx="14" fill="none" stroke="white" stroke-opacity="0.08" stroke-width="1"/>
+  <text x="996" y="413" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#a1a1aa" text-anchor="middle">Real-time results</text>
+
+  <!-- Bottom bar -->
+  <text x="644" y="476" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#52525b">3 free credits on signup · No credit card required · cliprankai.com</text>
+</svg>

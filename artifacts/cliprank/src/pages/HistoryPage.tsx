@@ -2,9 +2,11 @@ import { motion } from "framer-motion";
 import { useListAnalyses, useGetStats, getGetStatsQueryKey, getListAnalysesQueryKey } from "@workspace/api-client-react";
 import { Film, Zap, Lock, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function HistoryPage() {
   const [, setLocation] = useLocation();
+  usePageTitle("Analysis History");
   const { data: analyses, isLoading } = useListAnalyses({
     query: { queryKey: getListAnalysesQueryKey() },
   });

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { ArrowLeft, Check, Zap, Star, Crown, HelpCircle } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -101,6 +102,7 @@ const FAQ = [
 
 export default function PricingPage() {
   const [, nav] = useLocation();
+  usePageTitle("Pricing", "3 free credits to start. Buy more credits to keep analyzing — no subscriptions, no commitments. 1 credit per 10 seconds of video.");
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">

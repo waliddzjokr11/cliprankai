@@ -1,0 +1,16 @@
+{
+  "name": "ClipRank AI",
+  "short_name": "ClipRank",
+  "description": "AI-powered viral video scorer for TikTok, Reels & Shorts",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

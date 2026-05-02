@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { ArrowLeft, Upload, Cpu, BarChart3, Lock, Zap, Film, Clock, CreditCard } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function LearnMorePage() {
   const [, nav] = useLocation();
+  usePageTitle("How It Works", "See how ClipRank AI extracts frames, transcribes audio, and scores your video with GPT-4o vision across pacing, hook strength, captions, and virality potential.");
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
