@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSignIn, useSignUp, useAuth } from "@clerk/react";
+import { useSignIn, useSignUp, useAuth, useClerk } from "@clerk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Loader2, Mail, ShieldCheck, BarChart3, Film, Clock, Zap } from "lucide-react";
 import { Redirect } from "wouter";
@@ -91,6 +91,7 @@ function AuthShowcase() {
 
 export default function AuthPage() {
   const { isLoaded, isSignedIn } = useAuth();
+  const clerk = useClerk();
   const signInHook = useSignIn() as any;
   const signUpHook = useSignUp() as any;
 
@@ -198,27 +199,16 @@ export default function AuthPage() {
     }
   };
 
-  const handleOAuth = async (provider: "google" | "github") => {
-    if (!clerkReady) return;
+  const handleOAuth = (provider: "google" | "github") => {
+    if (!isLoaded) return;
     setOauthLoading(provider);
     setErrorMsg("");
-    try {
-      // Clerk v6: create() with oauth strategy, then redirect to the external URL
-      const result = await signIn.create({
-        strategy: `oauth_${provider}`,
-        redirectUrl: `${window.location.origin}${basePath}/sso-callback`,
-        actionCompleteRedirectUrl: `${window.location.origin}${basePath}/app`,
-      });
-      const redirectUrl = result?.firstFactorVerification?.externalVerificationRedirectURL;
-      if (redirectUrl) {
-        window.location.href = redirectUrl.toString();
-      } else {
-        throw new Error("No redirect URL returned from OAuth provider.");
-      }
-    } catch (err: any) {
-      setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? `${provider} sign-in failed. Please use email below.`);
-      setOauthLoading(null);
-    }
+    // Clerk v6: redirectToSignIn with oauthFlow triggers the OAuth redirect
+    // navigates away so no need to reset oauthLoading on success
+    void (clerk as any).redirectToSignIn({
+      oauthFlow: `oauth_${provider}`,
+      forceRedirectUrl: `${window.location.origin}${basePath}/app`,
+    });
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
