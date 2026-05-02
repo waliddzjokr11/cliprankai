@@ -1,13 +1,8 @@
-import { useState } from "react";
-import { useSignIn, useSignUp, useAuth, useClerk } from "@clerk/react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Loader2, Mail, ShieldCheck, BarChart3, Film, Clock, Zap } from "lucide-react";
-import { Redirect } from "wouter";
+import { SignIn } from "@clerk/react";
+import { motion } from "framer-motion";
+import { BarChart3, Film, Clock, Zap } from "lucide-react";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-type FlowMode = "email" | "verify";
-type AuthMethod = "signIn" | "signUp";
 
 function AuthShowcase() {
   const metrics = [
@@ -90,286 +85,28 @@ function AuthShowcase() {
 }
 
 export default function AuthPage() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const clerk = useClerk();
-  const signInHook = useSignIn() as any;
-  const signUpHook = useSignUp() as any;
-
-  const [mode, setMode] = useState<FlowMode>("email");
-  const [method, setMethod] = useState<AuthMethod>("signIn");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  if (isLoaded && isSignedIn) return <Redirect to="/app" />;
-
-  const signIn = signInHook?.signIn;
-  const setSignInActive = signInHook?.setActive;
-  const signUp = signUpHook?.signUp;
-  const setSignUpActive = signUpHook?.setActive;
-
-  const clerkReady = isLoaded && !!signIn && !!signUp;
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg("");
-
-    if (!clerkReady) {
-      setErrorMsg("Authentication is still loading. Please wait a moment and try again.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Try sign-in with email code first
-      const result = await signIn.create({ strategy: "email_code", identifier: email });
-
-      if (result.status === "needs_first_factor") {
-        setMethod("signIn");
-        setMode("verify");
-      } else if (result.status === "complete") {
-        // Already signed in (shouldn't normally happen here)
-        await setSignInActive({ session: result.createdSessionId });
-      } else {
-        // Unexpected status — surface it
-        setErrorMsg(`Unexpected sign-in state: ${result.status}. Please try again.`);
-      }
-    } catch (err: any) {
-      const errCode = err?.errors?.[0]?.code ?? "";
-
-      if (errCode === "form_identifier_not_found") {
-        // New user — create account
-        try {
-          const created = await signUp.create({ emailAddress: email });
-          if (created.status === "missing_requirements") {
-            await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-            setMethod("signUp");
-            setMode("verify");
-          } else if (created.status === "complete") {
-            await setSignUpActive({ session: created.createdSessionId });
-          } else {
-            await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-            setMethod("signUp");
-            setMode("verify");
-          }
-        } catch (suErr: any) {
-          setErrorMsg(suErr?.errors?.[0]?.longMessage ?? suErr?.message ?? "Could not create account. Please try again.");
-        }
-      } else {
-        setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? "Something went wrong. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clerkReady) return;
-    setLoading(true);
-    setErrorMsg("");
-
-    try {
-      if (method === "signIn") {
-        const result = await signIn.attemptFirstFactor({ strategy: "email_code", code });
-        if (result.status === "complete") {
-          await setSignInActive({ session: result.createdSessionId });
-        } else {
-          setErrorMsg(`Sign-in incomplete: ${result.status}. Please try again.`);
-        }
-      } else {
-        const result = await signUp.attemptEmailAddressVerification({ code });
-        if (result.status === "complete") {
-          await setSignUpActive({ session: result.createdSessionId });
-        } else {
-          setErrorMsg(`Verification incomplete: ${result.status}. Please try again.`);
-        }
-      }
-    } catch (err: any) {
-      const clerkCode = err?.errors?.[0]?.code ?? "";
-      if (clerkCode === "form_code_incorrect") {
-        setErrorMsg("Incorrect code. Check your email and try again.");
-      } else {
-        setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? "Verification failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOAuth = (provider: "google" | "github") => {
-    if (!isLoaded) return;
-    setOauthLoading(provider);
-    setErrorMsg("");
-    // Clerk v6: redirectToSignIn with oauthFlow triggers the OAuth redirect
-    // navigates away so no need to reset oauthLoading on success
-    void (clerk as any).redirectToSignIn({
-      oauthFlow: `oauth_${provider}`,
-      forceRedirectUrl: `${window.location.origin}${basePath}/app`,
-    });
-  };
-
-  const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-    setCode(val);
-  };
-
   return (
     <div className="flex min-h-screen bg-[#0a0a0a]">
-      {/* Left panel */}
+      {/* Left panel — Clerk SignIn with routing="path" handles all OAuth + OTP flows */}
       <div className="w-full lg:w-[460px] flex-shrink-0 flex flex-col items-center justify-center px-8 py-12 min-h-screen">
         <div className="w-full max-w-[380px]">
           {/* Logo */}
-          <div className="flex items-center gap-2 mb-10">
+          <div className="flex items-center gap-2 mb-8">
             <img src={`${basePath}/logo.svg`} className="w-8 h-8" alt="ClipRank" />
             <span className="font-semibold text-lg text-white tracking-tight">ClipRank</span>
           </div>
 
-          <AnimatePresence mode="wait">
-            {mode === "email" ? (
-              <motion.div
-                key="email"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.2 }}
-              >
-                <h1 className="text-2xl font-bold text-white mb-1">Get started</h1>
-                <p className="text-sm text-zinc-500 mb-8">
-                  Enter your email — we'll sign you in or create your account automatically.
-                </p>
-
-                {/* OAuth buttons */}
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  {([
-                    { name: "Google", provider: "google" as const, logo: "https://www.svgrepo.com/show/475656/google-color.svg" },
-                    { name: "GitHub", provider: "github" as const, logo: "https://www.svgrepo.com/show/512317/github-142.svg" },
-                  ]).map((p) => (
-                    <button
-                      key={p.name}
-                      type="button"
-                      onClick={() => handleOAuth(p.provider)}
-                      disabled={!clerkReady || oauthLoading !== null}
-                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
-                    >
-                      {oauthLoading === p.provider ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <img src={p.logo} className="w-4 h-4" alt={p.name} />
-                      )}
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-xs text-zinc-600">or continue with email</span>
-                  <div className="flex-1 h-px bg-white/10" />
-                </div>
-
-                <form onSubmit={handleEmailSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-zinc-300 mb-1.5 font-medium">Email address</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); setErrorMsg(""); }}
-                        placeholder="you@example.com"
-                        required
-                        autoFocus
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#18181b] border border-white/10 text-white placeholder:text-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {errorMsg && (
-                    <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{errorMsg}</p>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading || !email || !clerkReady}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : !clerkReady ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Loading…</>
-                    ) : (
-                      <>Continue <ArrowRight className="w-4 h-4" /></>
-                    )}
-                  </button>
-                </form>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="verify"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mb-6">
-                  <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                </div>
-                <h1 className="text-2xl font-bold text-white mb-1">Check your email</h1>
-                <p className="text-sm text-zinc-500 mb-1">We sent a 6-digit code to</p>
-                <p className="text-sm font-semibold text-white mb-8">{email}</p>
-
-                <form onSubmit={handleVerify} className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-zinc-300 mb-1.5 font-medium">Verification code</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={code}
-                      onChange={handleCodeChange}
-                      placeholder="000000"
-                      required
-                      autoFocus
-                      maxLength={6}
-                      className="w-full px-4 py-3 rounded-xl bg-[#18181b] border border-white/10 text-white text-center text-2xl font-mono tracking-[0.4em] placeholder:text-zinc-700 placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
-                    />
-                  </div>
-
-                  {errorMsg && (
-                    <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{errorMsg}</p>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading || code.length < 6}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & continue"}
-                  </button>
-                </form>
-
-                <button
-                  type="button"
-                  onClick={() => { setMode("email"); setCode(""); setErrorMsg(""); }}
-                  className="mt-4 w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  ← Use a different email
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <p className="mt-8 text-center text-xs text-zinc-600">
-            By continuing, you agree to our{" "}
-            <a href="#" className="underline hover:text-zinc-400 transition-colors">Terms</a>
-            {" "}and{" "}
-            <a href="#" className="underline hover:text-zinc-400 transition-colors">Privacy Policy</a>.
-          </p>
+          {/* Clerk handles Google, GitHub, email OTP — all OAuth callbacks go to /auth/sso-callback */}
+          <SignIn
+            routing="path"
+            path={`${basePath}/auth`}
+            signUpUrl={`${basePath}/auth`}
+            fallbackRedirectUrl={`${basePath}/app`}
+          />
         </div>
       </div>
 
+      {/* Right panel */}
       <AuthShowcase />
     </div>
   );

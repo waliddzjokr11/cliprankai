@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, HandleSSOCallback, useClerk, useAuth } from "@clerk/react";
+import { ClerkProvider, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, useLocation, Redirect, Router as WouterRouter } from "wouter";
@@ -91,18 +91,6 @@ const clerkAppearance = {
 };
 
 
-// SSO callback — finalizes OAuth session then navigates
-function SSOCallbackRoute() {
-  const [, setLocation] = useLocation();
-  return (
-    <HandleSSOCallback
-      navigateToApp={() => setLocation("/app")}
-      navigateToSignIn={() => setLocation("/auth")}
-      navigateToSignUp={() => setLocation("/auth")}
-    />
-  );
-}
-
 // Route guards — show content immediately while Clerk loads (better UX than Show)
 function HomeRoute() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -168,8 +156,6 @@ function ClerkProviderWithRoutes() {
             <Route path="/learn-more" component={LearnMorePage} />
             <Route path="/pricing" component={PricingPage} />
             <Route path="/auth/*?" component={AuthRoute} />
-            {/* SSO callback — Clerk redirects here after OAuth; HandleSSOCallback finalizes the session */}
-            <Route path="/sso-callback" component={SSOCallbackRoute} />
             {/* Legacy redirects — keep old URLs working */}
             <Route path="/sign-in/*?" component={AuthRoute} />
             <Route path="/sign-up/*?" component={AuthRoute} />
