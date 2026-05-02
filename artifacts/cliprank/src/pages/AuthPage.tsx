@@ -203,11 +203,18 @@ export default function AuthPage() {
     setOauthLoading(provider);
     setErrorMsg("");
     try {
-      await signIn.authenticateWithRedirect({
+      // Clerk v6: create() with oauth strategy, then redirect to the external URL
+      const result = await signIn.create({
         strategy: `oauth_${provider}`,
         redirectUrl: `${window.location.origin}${basePath}/sso-callback`,
-        redirectUrlComplete: `${window.location.origin}${basePath}/app`,
+        actionCompleteRedirectUrl: `${window.location.origin}${basePath}/app`,
       });
+      const redirectUrl = result?.firstFactorVerification?.externalVerificationRedirectURL;
+      if (redirectUrl) {
+        window.location.href = redirectUrl.toString();
+      } else {
+        throw new Error("No redirect URL returned from OAuth provider.");
+      }
     } catch (err: any) {
       setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? `${provider} sign-in failed. Please use email below.`);
       setOauthLoading(null);
