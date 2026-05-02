@@ -10,9 +10,11 @@ import {
   getListAnalysesQueryKey,
 } from "@workspace/api-client-react";
 import { useVideoProcessor } from "@/hooks/useVideoProcessor";
+import { useCredits, userId } from "@/hooks/useCredits";
 import { RadialProgress } from "@/components/RadialProgress";
 import { PaypalButton } from "@/components/PaypalButton";
 import { AnalysisSkeleton } from "@/components/AnalysisSkeleton";
+import { BuyCreditsModal } from "@/components/BuyCreditsModal";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -24,6 +26,9 @@ import {
   BarChart3,
   Clock,
   Layers,
+  ShoppingCart,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 
 type Step = "idle" | "processing" | "uploading" | "analyzing" | "done";
@@ -33,12 +38,15 @@ export default function AnalyzerPage() {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { processVideo, isProcessing, progress } = useVideoProcessor();
   const analyzeVideo = useAnalyzeVideo();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { credits, creditsRequired, hasEnoughCredits, refetch: refetchCredits } = useCredits();
 
   const { data: stats } = useGetStats({
     query: { queryKey: getGetStatsQueryKey() },
@@ -65,6 +73,20 @@ export default function AnalyzerPage() {
       setStep("processing");
       const result = await processVideo(file);
 
+      // Credit gate — check after we know the exact duration
+      if (!hasEnoughCredits(result.durationSeconds)) {
+        const required = creditsRequired(result.durationSeconds);
+        setPendingFile(file);
+        setStep("idle");
+        setShowBuyCredits(true);
+        toast({
+          title: "Not enough credits",
+          description: `This video needs ${required} credit${required !== 1 ? "s" : ""} (${Math.floor(result.durationSeconds)}s ÷ 10). You have ${credits ?? 0}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       setStep("uploading");
       const data = await analyzeVideo.mutateAsync({
         data: {
@@ -73,16 +95,23 @@ export default function AnalyzerPage() {
           filename: file.name,
           durationSeconds: result.durationSeconds,
           fingerprint: result.fingerprint,
+          userId,
         },
       });
 
       setAnalysisId(data.id);
       setStep("done");
+      refetchCredits();
 
       queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetStatsQueryKey() });
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      // 402 = insufficient credits (shouldn't normally hit here but handle gracefully)
+      if (err?.status === 402 || err?.response?.status === 402) {
+        setStep("idle");
+        setShowBuyCredits(true);
+        return;
+      }
       toast({
         title: "Analysis failed",
         description: "Something went wrong. Please try again.",
@@ -90,7 +119,7 @@ export default function AnalyzerPage() {
       });
       setStep("idle");
     }
-  }, [processVideo, analyzeVideo, queryClient, toast]);
+  }, [processVideo, analyzeVideo, queryClient, toast, hasEnoughCredits, creditsRequired, credits, refetchCredits]);
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files?.length) return;
@@ -114,13 +143,17 @@ export default function AnalyzerPage() {
     setStep("idle");
     setAnalysisId(null);
     setTranscriptOpen(false);
+    setPendingFile(null);
   };
 
-  const getStepLabel = () => {
-    if (step === "processing") return `Extracting frames... ${progress}%`;
-    if (step === "uploading") return "Uploading for AI analysis...";
-    if (step === "analyzing") return "AI analyzing your video...";
-    return "";
+  const handleCreditsPurchased = (newBalance: number) => {
+    refetchCredits();
+    // If there's a pending file, retry the analysis with the new credits
+    if (pendingFile) {
+      const file = pendingFile;
+      setPendingFile(null);
+      setTimeout(() => processAndAnalyze(file), 300);
+    }
   };
 
   return (
@@ -135,7 +168,7 @@ export default function AnalyzerPage() {
             <span className="font-semibold text-lg tracking-tight">ClipRank</span>
           </div>
 
-          <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             {stats && (
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1.5">
@@ -148,6 +181,20 @@ export default function AnalyzerPage() {
                 </span>
               </div>
             )}
+
+            {/* Credit balance pill */}
+            <button
+              onClick={() => setShowBuyCredits(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 hover:border-primary/40 hover:bg-primary/5 transition-colors group"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-primary" />
+              <span className="font-medium text-white tabular-nums">
+                {credits === null ? "—" : credits}
+              </span>
+              <span className="text-muted-foreground">credits</span>
+              <ShoppingCart className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
+            </button>
+
             <button
               onClick={() => window.location.href = `${import.meta.env.BASE_URL}history`}
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -177,6 +224,24 @@ export default function AnalyzerPage() {
                 <p className="text-muted-foreground text-lg max-w-xl mx-auto">
                   Upload any video clip. ClipRank uses AI to score pacing, visual hooks, and caption readability.
                 </p>
+                {credits !== null && credits <= 2 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    {credits === 0
+                      ? "You're out of credits. "
+                      : `Only ${credits} credit${credits !== 1 ? "s" : ""} remaining. `}
+                    <button
+                      onClick={() => setShowBuyCredits(true)}
+                      className="underline underline-offset-2 font-medium hover:text-amber-300 transition-colors"
+                    >
+                      Top up now
+                    </button>
+                  </motion.div>
+                )}
               </div>
 
               <motion.div
@@ -184,9 +249,9 @@ export default function AnalyzerPage() {
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => credits === 0 ? setShowBuyCredits(true) : fileInputRef.current?.click()}
                 animate={{
-                  borderColor: isDragging ? "hsl(var(--primary))" : "rgba(255,255,255,0.08)",
+                  borderColor: isDragging ? "hsl(var(--primary))" : credits === 0 ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.08)",
                   backgroundColor: isDragging ? "rgba(99, 130, 246, 0.06)" : "rgba(255,255,255,0.02)",
                   scale: isDragging ? 1.01 : 1,
                 }}
@@ -203,13 +268,18 @@ export default function AnalyzerPage() {
 
                 <div className="text-center">
                   <p className="text-xl font-semibold mb-2">
-                    {isDragging ? "Drop to analyze" : "Drop your video here"}
+                    {credits === 0
+                      ? "Buy credits to analyze"
+                      : isDragging ? "Drop to analyze" : "Drop your video here"}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    or click to browse — MP4, MOV, AVI, WebM supported
+                    {credits === 0
+                      ? "You need credits to run an analysis — 1 credit per 10 seconds"
+                      : "or click to browse — MP4, MOV, AVI, WebM supported"}
                   </p>
                 </div>
 
+                {/* Credit cost hint */}
                 <div className="flex items-center gap-6 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <Zap className="w-3 h-3 text-primary" />
@@ -221,7 +291,7 @@ export default function AnalyzerPage() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3 h-3 text-primary" />
-                    Edge-cached results
+                    1 credit / 10 s of video
                   </span>
                 </div>
               </motion.div>
@@ -266,12 +336,12 @@ export default function AnalyzerPage() {
               </div>
               <div className="text-center">
                 <p className="text-xl font-semibold mb-2">Extracting frames…</p>
-                <p className="text-muted-foreground text-sm">Sampling 1 frame every 60 frames client-side</p>
+                <p className="text-muted-foreground text-sm">Adaptive sampling client-side</p>
               </div>
             </motion.div>
           )}
 
-          {/* UPLOADING / ANALYZING: show skeleton that mirrors results layout */}
+          {/* UPLOADING / ANALYZING: skeleton that mirrors results layout */}
           {(step === "uploading" || step === "analyzing") && (
             <motion.div
               key="skeleton-phase"
@@ -330,24 +400,9 @@ export default function AnalyzerPage() {
                     />
                   </div>
                   <div className="col-span-3 grid grid-cols-3 gap-6">
-                    <RadialProgress
-                      score={analysis.pacingScore}
-                      label="Pacing"
-                      size={120}
-                      strokeWidth={8}
-                    />
-                    <RadialProgress
-                      score={analysis.visualHookScore}
-                      label="Visual Hook"
-                      size={120}
-                      strokeWidth={8}
-                    />
-                    <RadialProgress
-                      score={analysis.captionReadabilityScore}
-                      label="Captions"
-                      size={120}
-                      strokeWidth={8}
-                    />
+                    <RadialProgress score={analysis.pacingScore} label="Pacing" size={120} strokeWidth={8} />
+                    <RadialProgress score={analysis.visualHookScore} label="Visual Hook" size={120} strokeWidth={8} />
+                    <RadialProgress score={analysis.captionReadabilityScore} label="Captions" size={120} strokeWidth={8} />
                   </div>
                 </div>
               </motion.div>
@@ -478,7 +533,6 @@ export default function AnalyzerPage() {
                   </div>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden">
-                    {/* Blurred preview */}
                     <div className="blur-sm pointer-events-none select-none p-6 space-y-4 glass-card">
                       <div className="h-4 bg-white/10 rounded w-3/4" />
                       <div className="h-4 bg-white/10 rounded w-full" />
@@ -487,7 +541,6 @@ export default function AnalyzerPage() {
                       <div className="h-4 bg-white/10 rounded w-4/5" />
                       <div className="h-4 bg-white/10 rounded w-full" />
                     </div>
-                    {/* Lock overlay */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-8">
                       <div className="glass-card-bright rounded-2xl px-8 py-8 flex flex-col items-center gap-5 w-full max-w-md">
                         <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
@@ -515,6 +568,14 @@ export default function AnalyzerPage() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Buy Credits Modal */}
+      <BuyCreditsModal
+        open={showBuyCredits}
+        onClose={() => { setShowBuyCredits(false); setPendingFile(null); }}
+        onPurchased={handleCreditsPurchased}
+        currentCredits={credits}
+      />
     </div>
   );
 }

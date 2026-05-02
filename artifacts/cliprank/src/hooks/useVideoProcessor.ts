@@ -37,7 +37,7 @@ export function useVideoProcessor() {
       const fileName = "input.mp4";
       await ffmpeg.writeFile(fileName, await fetchFile(file));
 
-      // Get exact duration via HTMLVideoElement
+      // Get duration via HTMLVideoElement
       const actualDuration = await new Promise<number>((resolve) => {
         const video = document.createElement("video");
         video.preload = "metadata";
@@ -45,19 +45,24 @@ export function useVideoProcessor() {
           window.URL.revokeObjectURL(video.src);
           resolve(video.duration);
         };
-        video.onerror = () => resolve(30); // fallback
+        video.onerror = () => resolve(30);
         video.src = URL.createObjectURL(file);
       });
 
-      // Extract 1 JPG every 60 frames (fast — only a handful of frames per clip)
-      // -vsync vfr ensures no duplicate frames when the filter skips
-      await ffmpeg.exec([
-        "-i", fileName,
-        "-vf", "select='not(mod(n\\,60))',scale=320:-1",
-        "-vsync", "vfr",
-        "-q:v", "3",
-        "frame_%03d.jpg",
-      ]);
+      // Adaptive sampling:
+      //   > 30s  → 1 frame every 3 seconds (saves tokens on longer clips)
+      //   ≤ 30s  → 1 frame every 60 video-frames (fine-grained short clips)
+      const vfFilter =
+        actualDuration > 30
+          ? "fps=1/3,scale=320:-1"
+          : "select='not(mod(n\\,60))',scale=320:-1";
+
+      const ffmpegArgs =
+        actualDuration > 30
+          ? ["-i", fileName, "-vf", vfFilter, "-q:v", "3", "frame_%03d.jpg"]
+          : ["-i", fileName, "-vf", vfFilter, "-vsync", "vfr", "-q:v", "3", "frame_%03d.jpg"];
+
+      await ffmpeg.exec(ffmpegArgs);
 
       const frames: string[] = [];
       let i = 1;
@@ -74,7 +79,7 @@ export function useVideoProcessor() {
           frames.push(base64);
           i++;
         } catch {
-          break; // no more frames
+          break;
         }
       }
 

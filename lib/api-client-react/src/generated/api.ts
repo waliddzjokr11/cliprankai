@@ -19,12 +19,18 @@ import type {
 import type {
   AnalysisStats,
   AnalyzeVideoBody,
+  CaptureCreditOrderBody,
   CaptureOrderBody,
   CaptureResult,
+  CreateCreditOrderBody,
   CreateOrderBody,
+  CreditPurchaseResult,
   HealthStatus,
+  InitUserBody,
+  InsufficientCreditsError,
   OrderResult,
   UnlockPremiumBody,
+  UserCreditsResponse,
   VideoAnalysis,
 } from "./api.schemas";
 
@@ -208,7 +214,7 @@ export const analyzeVideo = async (
 };
 
 export const getAnalyzeVideoMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<InsufficientCreditsError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -249,13 +255,13 @@ export type AnalyzeVideoMutationResult = NonNullable<
   Awaited<ReturnType<typeof analyzeVideo>>
 >;
 export type AnalyzeVideoMutationBody = BodyType<AnalyzeVideoBody>;
-export type AnalyzeVideoMutationError = ErrorType<unknown>;
+export type AnalyzeVideoMutationError = ErrorType<InsufficientCreditsError>;
 
 /**
  * @summary Analyze video frames with AI
  */
 export const useAnalyzeVideo = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<InsufficientCreditsError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -621,6 +627,178 @@ export const useCapturePaypalOrder = <
 };
 
 /**
+ * @summary Create a PayPal order for credit purchase
+ */
+export const getCreateCreditOrderUrl = () => {
+  return `/api/payments/create-credit-order`;
+};
+
+export const createCreditOrder = async (
+  createCreditOrderBody: CreateCreditOrderBody,
+  options?: RequestInit,
+): Promise<OrderResult> => {
+  return customFetch<OrderResult>(getCreateCreditOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCreditOrderBody),
+  });
+};
+
+export const getCreateCreditOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCreditOrder>>,
+    TError,
+    { data: BodyType<CreateCreditOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCreditOrder>>,
+  TError,
+  { data: BodyType<CreateCreditOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createCreditOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCreditOrder>>,
+    { data: BodyType<CreateCreditOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCreditOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCreditOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCreditOrder>>
+>;
+export type CreateCreditOrderMutationBody = BodyType<CreateCreditOrderBody>;
+export type CreateCreditOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a PayPal order for credit purchase
+ */
+export const useCreateCreditOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCreditOrder>>,
+    TError,
+    { data: BodyType<CreateCreditOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCreditOrder>>,
+  TError,
+  { data: BodyType<CreateCreditOrderBody> },
+  TContext
+> => {
+  return useMutation(getCreateCreditOrderMutationOptions(options));
+};
+
+/**
+ * @summary Capture credit purchase and add credits to user
+ */
+export const getCaptureCreditOrderUrl = () => {
+  return `/api/payments/capture-credit-order`;
+};
+
+export const captureCreditOrder = async (
+  captureCreditOrderBody: CaptureCreditOrderBody,
+  options?: RequestInit,
+): Promise<CreditPurchaseResult> => {
+  return customFetch<CreditPurchaseResult>(getCaptureCreditOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(captureCreditOrderBody),
+  });
+};
+
+export const getCaptureCreditOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof captureCreditOrder>>,
+    TError,
+    { data: BodyType<CaptureCreditOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof captureCreditOrder>>,
+  TError,
+  { data: BodyType<CaptureCreditOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["captureCreditOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof captureCreditOrder>>,
+    { data: BodyType<CaptureCreditOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return captureCreditOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CaptureCreditOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof captureCreditOrder>>
+>;
+export type CaptureCreditOrderMutationBody = BodyType<CaptureCreditOrderBody>;
+export type CaptureCreditOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Capture credit purchase and add credits to user
+ */
+export const useCaptureCreditOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof captureCreditOrder>>,
+    TError,
+    { data: BodyType<CaptureCreditOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof captureCreditOrder>>,
+  TError,
+  { data: BodyType<CaptureCreditOrderBody> },
+  TContext
+> => {
+  return useMutation(getCaptureCreditOrderMutationOptions(options));
+};
+
+/**
  * @summary Get aggregate stats across all analyses
  */
 export const getGetStatsUrl = () => {
@@ -686,3 +864,176 @@ export function useGetStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get user credit balance
+ */
+export const getGetUserCreditsUrl = (userId: string) => {
+  return `/api/credits/${userId}`;
+};
+
+export const getUserCredits = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<UserCreditsResponse> => {
+  return customFetch<UserCreditsResponse>(getGetUserCreditsUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserCreditsQueryKey = (userId: string) => {
+  return [`/api/credits/${userId}`] as const;
+};
+
+export const getGetUserCreditsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserCredits>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserCredits>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUserCreditsQueryKey(userId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserCredits>>> = ({
+    signal,
+  }) => getUserCredits(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserCredits>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserCreditsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserCredits>>
+>;
+export type GetUserCreditsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get user credit balance
+ */
+
+export function useGetUserCredits<
+  TData = Awaited<ReturnType<typeof getUserCredits>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserCredits>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserCreditsQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Initialize user with trial credits (idempotent)
+ */
+export const getInitUserUrl = () => {
+  return `/api/credits/init`;
+};
+
+export const initUser = async (
+  initUserBody: InitUserBody,
+  options?: RequestInit,
+): Promise<UserCreditsResponse> => {
+  return customFetch<UserCreditsResponse>(getInitUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(initUserBody),
+  });
+};
+
+export const getInitUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initUser>>,
+    TError,
+    { data: BodyType<InitUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof initUser>>,
+  TError,
+  { data: BodyType<InitUserBody> },
+  TContext
+> => {
+  const mutationKey = ["initUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof initUser>>,
+    { data: BodyType<InitUserBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return initUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InitUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof initUser>>
+>;
+export type InitUserMutationBody = BodyType<InitUserBody>;
+export type InitUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Initialize user with trial credits (idempotent)
+ */
+export const useInitUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initUser>>,
+    TError,
+    { data: BodyType<InitUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof initUser>>,
+  TError,
+  { data: BodyType<InitUserBody> },
+  TContext
+> => {
+  return useMutation(getInitUserMutationOptions(options));
+};

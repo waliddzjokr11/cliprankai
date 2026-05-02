@@ -44,9 +44,7 @@ export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
  * @summary Analyze video frames with AI
  */
 export const AnalyzeVideoBody = zod.object({
-  frames: zod
-    .array(zod.string())
-    .describe("Base64-encoded JPEG frames extracted at 1fps"),
+  frames: zod.array(zod.string()).describe("Base64-encoded JPEG frames"),
   audioBase64: zod
     .string()
     .nullish()
@@ -54,6 +52,7 @@ export const AnalyzeVideoBody = zod.object({
   filename: zod.string(),
   durationSeconds: zod.number(),
   fingerprint: zod.string().describe("SHA-256 hash of video for cache lookup"),
+  userId: zod.string().describe("Client-side UUID identifying this user"),
 });
 
 export const AnalyzeVideoResponse = zod.object({
@@ -163,6 +162,34 @@ export const CapturePaypalOrderResponse = zod.object({
 });
 
 /**
+ * @summary Create a PayPal order for credit purchase
+ */
+export const CreateCreditOrderBody = zod.object({
+  userId: zod.string(),
+  credits: zod.union([zod.literal(50), zod.literal(150), zod.literal(500)]),
+});
+
+export const CreateCreditOrderResponse = zod.object({
+  orderId: zod.string(),
+  status: zod.string(),
+});
+
+/**
+ * @summary Capture credit purchase and add credits to user
+ */
+export const CaptureCreditOrderBody = zod.object({
+  orderId: zod.string(),
+  userId: zod.string(),
+  credits: zod.union([zod.literal(50), zod.literal(150), zod.literal(500)]),
+});
+
+export const CaptureCreditOrderResponse = zod.object({
+  success: zod.boolean(),
+  creditsAdded: zod.number(),
+  newBalance: zod.number(),
+});
+
+/**
  * @summary Get aggregate stats across all analyses
  */
 export const GetStatsResponse = zod.object({
@@ -172,4 +199,30 @@ export const GetStatsResponse = zod.object({
   avgVisualHookScore: zod.number(),
   avgCaptionScore: zod.number(),
   premiumUnlocks: zod.number(),
+});
+
+/**
+ * @summary Get user credit balance
+ */
+export const GetUserCreditsParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const GetUserCreditsResponse = zod.object({
+  userId: zod.string(),
+  credits: zod.number(),
+  email: zod.string().nullish(),
+});
+
+/**
+ * @summary Initialize user with trial credits (idempotent)
+ */
+export const InitUserBody = zod.object({
+  userId: zod.string(),
+});
+
+export const InitUserResponse = zod.object({
+  userId: zod.string(),
+  credits: zod.number(),
+  email: zod.string().nullish(),
 });

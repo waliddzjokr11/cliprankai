@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { eq, desc, avg, count, sum, sql } from "drizzle-orm";
-import { db, analysesTable } from "@workspace/db";
+import { db, analysesTable, userCreditsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import {
   AnalyzeVideoBody,
@@ -11,6 +11,8 @@ import {
 } from "@workspace/api-zod";
 
 const router = Router();
+
+const CREDITS_PER_10S = 1;
 
 function serializeAnalysis(a: typeof analysesTable.$inferSelect) {
   return {
@@ -33,6 +35,10 @@ function serializeAnalysis(a: typeof analysesTable.$inferSelect) {
     frameCount: a.frameCount,
     createdAt: a.createdAt.toISOString(),
   };
+}
+
+function creditsRequired(durationSeconds: number): number {
+  return Math.ceil(durationSeconds / 10) * CREDITS_PER_10S;
 }
 
 // GET /api/videos/stats — MUST be before /:id
@@ -88,9 +94,9 @@ router.post("/analyze", async (req, res) => {
     return res.status(400).json({ error: "Invalid request body", issues: bodyResult.error.issues });
   }
 
-  const { frames, audioBase64, filename, durationSeconds, fingerprint } = bodyResult.data;
+  const { frames, audioBase64, filename, durationSeconds, fingerprint, userId } = bodyResult.data;
 
-  // Cache check — instant return if this video was analyzed before
+  // Cache check — instant return on hit, no credits deducted (no AI cost)
   try {
     const cached = await db
       .select()
@@ -104,6 +110,29 @@ router.post("/analyze", async (req, res) => {
     }
   } catch (err) {
     req.log.error({ err }, "Cache lookup failed");
+  }
+
+  // Credit check — only for fresh analyses
+  const required = creditsRequired(durationSeconds);
+  try {
+    const [userRow] = await db
+      .select()
+      .from(userCreditsTable)
+      .where(eq(userCreditsTable.userId, userId))
+      .limit(1);
+
+    const available = userRow?.credits ?? 0;
+    if (available < required) {
+      req.log.warn({ userId, required, available }, "Insufficient credits");
+      return res.status(402).json({
+        error: "Insufficient credits",
+        creditsRequired: required,
+        creditsAvailable: available,
+      });
+    }
+  } catch (err) {
+    req.log.error({ err }, "Credit check failed");
+    return res.status(500).json({ error: "Internal server error" });
   }
 
   // Transcribe audio if provided
@@ -124,7 +153,7 @@ router.post("/analyze", async (req, res) => {
     }
   }
 
-  // Prepare frames for GPT-4 vision — limit to 20 frames
+  // Prepare frames — limit to 20
   const selectedFrames = frames.slice(0, 20);
   const imageContent = selectedFrames.map((frame) => ({
     type: "image_url" as const,
@@ -181,8 +210,6 @@ Scoring criteria:
     });
 
     const content = response.choices[0]?.message?.content ?? "{}";
-
-    // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : "{}";
     const parsed = JSON.parse(jsonStr);
@@ -208,6 +235,21 @@ Scoring criteria:
     };
 
     const [inserted] = await db.insert(analysesTable).values(analysis).returning();
+
+    // Deduct credits after successful analysis
+    try {
+      await db
+        .update(userCreditsTable)
+        .set({
+          credits: sql`${userCreditsTable.credits} - ${required}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(userCreditsTable.userId, userId));
+      req.log.info({ userId, creditsDeducted: required }, "Credits deducted");
+    } catch (err) {
+      req.log.error({ err }, "Failed to deduct credits — analysis saved anyway");
+    }
+
     return res.json(serializeAnalysis(inserted));
   } catch (err) {
     req.log.error({ err }, "AI analysis failed");
@@ -259,20 +301,12 @@ router.post("/:id/unlock", async (req, res) => {
       .where(eq(analysesTable.id, id))
       .limit(1);
 
-    if (!analysis) {
-      return res.status(404).json({ error: "Analysis not found" });
-    }
-
-    if (analysis.isPremiumUnlocked) {
-      return res.json(serializeAnalysis(analysis));
-    }
+    if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+    if (analysis.isPremiumUnlocked) return res.json(serializeAnalysis(analysis));
 
     const [updated] = await db
       .update(analysesTable)
-      .set({
-        isPremiumUnlocked: true,
-        paypalOrderId,
-      })
+      .set({ isPremiumUnlocked: true, paypalOrderId })
       .where(eq(analysesTable.id, id))
       .returning();
 

@@ -1,7 +1,12 @@
 import { Router } from "express";
-import { db, analysesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { CreatePaypalOrderBody, CapturePaypalOrderBody } from "@workspace/api-zod";
+import { db, analysesTable, userCreditsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import {
+  CreatePaypalOrderBody,
+  CapturePaypalOrderBody,
+  CreateCreditOrderBody,
+  CaptureCreditOrderBody,
+} from "@workspace/api-zod";
 
 const router = Router();
 
@@ -9,6 +14,12 @@ const PAYPAL_BASE_URL =
   process.env.PAYPAL_ENV === "production"
     ? "https://api-m.paypal.com"
     : "https://api-m.sandbox.paypal.com";
+
+const CREDIT_TIERS: Record<number, string> = {
+  50: "9.99",
+  150: "19.99",
+  500: "49.99",
+};
 
 async function getPaypalAccessToken(): Promise<string> {
   const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -37,16 +48,13 @@ async function getPaypalAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-// POST /api/payments/create-order
+// POST /api/payments/create-order  (premium analysis unlock)
 router.post("/create-order", async (req, res) => {
   const bodyResult = CreatePaypalOrderBody.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: "Invalid request body" });
-  }
+  if (!bodyResult.success) return res.status(400).json({ error: "Invalid request body" });
 
   const { analysisId } = bodyResult.data;
 
-  // Verify analysis exists
   try {
     const [analysis] = await db
       .select()
@@ -54,13 +62,8 @@ router.post("/create-order", async (req, res) => {
       .where(eq(analysesTable.id, analysisId))
       .limit(1);
 
-    if (!analysis) {
-      return res.status(404).json({ error: "Analysis not found" });
-    }
-
-    if (analysis.isPremiumUnlocked) {
-      return res.status(400).json({ error: "Premium already unlocked" });
-    }
+    if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+    if (analysis.isPremiumUnlocked) return res.status(400).json({ error: "Premium already unlocked" });
   } catch (err) {
     req.log.error({ err }, "DB lookup failed in create-order");
     return res.status(500).json({ error: "Internal server error" });
@@ -68,29 +71,17 @@ router.post("/create-order", async (req, res) => {
 
   try {
     const accessToken = await getPaypalAccessToken();
-
     const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         intent: "CAPTURE",
-        purchase_units: [
-          {
-            reference_id: analysisId,
-            amount: {
-              currency_code: "USD",
-              value: "10.00",
-            },
-            description: "ClipRank Premium Analysis Unlock",
-          },
-        ],
-        application_context: {
-          brand_name: "ClipRank",
-          user_action: "PAY_NOW",
-        },
+        purchase_units: [{
+          reference_id: analysisId,
+          amount: { currency_code: "USD", value: "10.00" },
+          description: "ClipRank Premium Analysis Unlock",
+        }],
+        application_context: { brand_name: "ClipRank", user_action: "PAY_NOW" },
       }),
     });
 
@@ -108,24 +99,18 @@ router.post("/create-order", async (req, res) => {
   }
 });
 
-// POST /api/payments/capture-order
+// POST /api/payments/capture-order  (premium analysis unlock)
 router.post("/capture-order", async (req, res) => {
   const bodyResult = CapturePaypalOrderBody.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: "Invalid request body" });
-  }
+  if (!bodyResult.success) return res.status(400).json({ error: "Invalid request body" });
 
   const { orderId, analysisId } = bodyResult.data;
 
   try {
     const accessToken = await getPaypalAccessToken();
-
     const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -135,12 +120,10 @@ router.post("/capture-order", async (req, res) => {
     }
 
     const capture = await response.json() as { id: string; status: string };
-
     if (capture.status !== "COMPLETED") {
       return res.status(402).json({ error: "Payment not completed", status: capture.status });
     }
 
-    // Mark analysis as premium unlocked
     await db
       .update(analysesTable)
       .set({ isPremiumUnlocked: true, paypalOrderId: orderId })
@@ -149,6 +132,104 @@ router.post("/capture-order", async (req, res) => {
     return res.json({ success: true, status: capture.status });
   } catch (err) {
     req.log.error({ err }, "PayPal capture error");
+    return res.status(500).json({ error: "Payment service error" });
+  }
+});
+
+// POST /api/payments/create-credit-order
+router.post("/create-credit-order", async (req, res) => {
+  const bodyResult = CreateCreditOrderBody.safeParse(req.body);
+  if (!bodyResult.success) return res.status(400).json({ error: "Invalid request body" });
+
+  const { userId, credits } = bodyResult.data;
+  const amount = CREDIT_TIERS[credits];
+  if (!amount) return res.status(400).json({ error: "Invalid credit tier" });
+
+  try {
+    const accessToken = await getPaypalAccessToken();
+    const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intent: "CAPTURE",
+        purchase_units: [{
+          reference_id: userId,
+          amount: { currency_code: "USD", value: amount },
+          description: `ClipRank ${credits} Credits`,
+        }],
+        application_context: { brand_name: "ClipRank", user_action: "PAY_NOW" },
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      req.log.error({ status: response.status, text }, "PayPal create-credit-order failed");
+      return res.status(502).json({ error: "PayPal order creation failed" });
+    }
+
+    const order = await response.json() as { id: string; status: string };
+    return res.json({ orderId: order.id, status: order.status });
+  } catch (err) {
+    req.log.error({ err }, "create-credit-order error");
+    return res.status(500).json({ error: "Payment service error" });
+  }
+});
+
+// POST /api/payments/capture-credit-order
+router.post("/capture-credit-order", async (req, res) => {
+  const bodyResult = CaptureCreditOrderBody.safeParse(req.body);
+  if (!bodyResult.success) return res.status(400).json({ error: "Invalid request body" });
+
+  const { orderId, userId, credits } = bodyResult.data;
+
+  try {
+    const accessToken = await getPaypalAccessToken();
+    const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      req.log.error({ status: response.status, text }, "PayPal capture-credit-order failed");
+      return res.status(502).json({ error: "PayPal capture failed" });
+    }
+
+    const capture = await response.json() as { id: string; status: string };
+    if (capture.status !== "COMPLETED") {
+      return res.status(402).json({ error: "Payment not completed", status: capture.status });
+    }
+
+    // Upsert user credits
+    const [existing] = await db
+      .select()
+      .from(userCreditsTable)
+      .where(eq(userCreditsTable.userId, userId))
+      .limit(1);
+
+    let newBalance: number;
+    if (existing) {
+      const [updated] = await db
+        .update(userCreditsTable)
+        .set({
+          credits: sql`${userCreditsTable.credits} + ${credits}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(userCreditsTable.userId, userId))
+        .returning();
+      newBalance = updated.credits;
+    } else {
+      const [created] = await db
+        .insert(userCreditsTable)
+        .values({ userId, credits })
+        .returning();
+      newBalance = created.credits;
+    }
+
+    req.log.info({ userId, credits, newBalance }, "Credits purchased");
+    return res.json({ success: true, creditsAdded: credits, newBalance });
+  } catch (err) {
+    req.log.error({ err }, "capture-credit-order error");
     return res.status(500).json({ error: "Payment service error" });
   }
 });

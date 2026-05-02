@@ -14,6 +14,8 @@ tags:
     description: Video analysis operations
   - name: payments
     description: PayPal payment operations
+  - name: credits
+    description: User credit operations
 paths:
   /healthz:
     get:
@@ -62,6 +64,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoAnalysis"
+        "402":
+          description: Insufficient credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsufficientCreditsError"
 
   /videos/{id}:
     get:
@@ -145,6 +153,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/CaptureResult"
 
+  /payments/create-credit-order:
+    post:
+      operationId: createCreditOrder
+      tags: [payments]
+      summary: Create a PayPal order for credit purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCreditOrderBody"
+      responses:
+        "200":
+          description: PayPal order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResult"
+
+  /payments/capture-credit-order:
+    post:
+      operationId: captureCreditOrder
+      tags: [payments]
+      summary: Capture credit purchase and add credits to user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptureCreditOrderBody"
+      responses:
+        "200":
+          description: Credit purchase result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditPurchaseResult"
+
   /videos/stats:
     get:
       operationId: getStats
@@ -157,6 +203,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalysisStats"
+
+  /credits/{userId}:
+    get:
+      operationId: getUserCredits
+      tags: [credits]
+      summary: Get user credit balance
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserCreditsResponse"
+
+  /credits/init:
+    post:
+      operationId: initUser
+      tags: [credits]
+      summary: Initialize user with trial credits (idempotent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitUserBody"
+      responses:
+        "200":
+          description: User credits (existing or newly created with 3 trial credits)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserCreditsResponse"
 
 components:
   schemas:
@@ -234,7 +318,7 @@ components:
           type: array
           items:
             type: string
-          description: Base64-encoded JPEG frames extracted at 1fps
+          description: Base64-encoded JPEG frames
         audioBase64:
           type: string
           nullable: true
@@ -246,11 +330,29 @@ components:
         fingerprint:
           type: string
           description: SHA-256 hash of video for cache lookup
+        userId:
+          type: string
+          description: Client-side UUID identifying this user
       required:
         - frames
         - filename
         - durationSeconds
         - fingerprint
+        - userId
+
+    InsufficientCreditsError:
+      type: object
+      properties:
+        error:
+          type: string
+        creditsRequired:
+          type: integer
+        creditsAvailable:
+          type: integer
+      required:
+        - error
+        - creditsRequired
+        - creditsAvailable
 
     UnlockPremiumBody:
       type: object
@@ -301,6 +403,47 @@ components:
         - success
         - status
 
+    CreateCreditOrderBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        credits:
+          type: integer
+          enum: [50, 150, 500]
+      required:
+        - userId
+        - credits
+
+    CaptureCreditOrderBody:
+      type: object
+      properties:
+        orderId:
+          type: string
+        userId:
+          type: string
+        credits:
+          type: integer
+          enum: [50, 150, 500]
+      required:
+        - orderId
+        - userId
+        - credits
+
+    CreditPurchaseResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        creditsAdded:
+          type: integer
+        newBalance:
+          type: integer
+      required:
+        - success
+        - creditsAdded
+        - newBalance
+
     AnalysisStats:
       type: object
       properties:
@@ -323,3 +466,25 @@ components:
         - avgVisualHookScore
         - avgCaptionScore
         - premiumUnlocks
+
+    UserCreditsResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        credits:
+          type: integer
+        email:
+          type: string
+          nullable: true
+      required:
+        - userId
+        - credits
+
+    InitUserBody:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId

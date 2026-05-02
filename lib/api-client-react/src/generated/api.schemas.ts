@@ -31,7 +31,7 @@ export interface VideoAnalysis {
 }
 
 export interface AnalyzeVideoBody {
-  /** Base64-encoded JPEG frames extracted at 1fps */
+  /** Base64-encoded JPEG frames */
   frames: string[];
   /** Base64-encoded audio extracted from video */
   audioBase64?: string | null;
@@ -39,6 +39,14 @@ export interface AnalyzeVideoBody {
   durationSeconds: number;
   /** SHA-256 hash of video for cache lookup */
   fingerprint: string;
+  /** Client-side UUID identifying this user */
+  userId: string;
+}
+
+export interface InsufficientCreditsError {
+  error: string;
+  creditsRequired: number;
+  creditsAvailable: number;
 }
 
 export interface UnlockPremiumBody {
@@ -64,6 +72,41 @@ export interface CaptureResult {
   status: string;
 }
 
+export type CreateCreditOrderBodyCredits =
+  (typeof CreateCreditOrderBodyCredits)[keyof typeof CreateCreditOrderBodyCredits];
+
+export const CreateCreditOrderBodyCredits = {
+  NUMBER_50: 50,
+  NUMBER_150: 150,
+  NUMBER_500: 500,
+} as const;
+
+export interface CreateCreditOrderBody {
+  userId: string;
+  credits: CreateCreditOrderBodyCredits;
+}
+
+export type CaptureCreditOrderBodyCredits =
+  (typeof CaptureCreditOrderBodyCredits)[keyof typeof CaptureCreditOrderBodyCredits];
+
+export const CaptureCreditOrderBodyCredits = {
+  NUMBER_50: 50,
+  NUMBER_150: 150,
+  NUMBER_500: 500,
+} as const;
+
+export interface CaptureCreditOrderBody {
+  orderId: string;
+  userId: string;
+  credits: CaptureCreditOrderBodyCredits;
+}
+
+export interface CreditPurchaseResult {
+  success: boolean;
+  creditsAdded: number;
+  newBalance: number;
+}
+
 export interface AnalysisStats {
   totalAnalyses: number;
   avgOverallScore: number;
@@ -71,4 +114,14 @@ export interface AnalysisStats {
   avgVisualHookScore: number;
   avgCaptionScore: number;
   premiumUnlocks: number;
+}
+
+export interface UserCreditsResponse {
+  userId: string;
+  credits: number;
+  email?: string | null;
+}
+
+export interface InitUserBody {
+  userId: string;
 }
