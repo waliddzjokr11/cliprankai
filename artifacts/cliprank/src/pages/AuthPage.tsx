@@ -91,9 +91,7 @@ function AuthShowcase() {
 
 export default function AuthPage() {
   const { isLoaded, isSignedIn } = useAuth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signInHook = useSignIn() as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signUpHook = useSignUp() as any;
 
   const [mode, setMode] = useState<FlowMode>("email");
@@ -101,42 +99,65 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   if (isLoaded && isSignedIn) return <Redirect to="/app" />;
 
-  const signIn = signInHook.signIn;
-  const setSignInActive = signInHook.setActive;
-  const signUp = signUpHook.signUp;
-  const setSignUpActive = signUpHook.setActive;
+  const signIn = signInHook?.signIn;
+  const setSignInActive = signInHook?.setActive;
+  const signUp = signUpHook?.signUp;
+  const setSignUpActive = signUpHook?.setActive;
+
+  const clerkReady = isLoaded && !!signIn && !!signUp;
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signIn || !signUp) return;
-    setLoading(true);
     setErrorMsg("");
 
+    if (!clerkReady) {
+      setErrorMsg("Authentication is still loading. Please wait a moment and try again.");
+      return;
+    }
+
+    setLoading(true);
     try {
       // Try sign-in with email code first
       const result = await signIn.create({ strategy: "email_code", identifier: email });
+
       if (result.status === "needs_first_factor") {
         setMethod("signIn");
         setMode("verify");
+      } else if (result.status === "complete") {
+        // Already signed in (shouldn't normally happen here)
+        await setSignInActive({ session: result.createdSessionId });
+      } else {
+        // Unexpected status — surface it
+        setErrorMsg(`Unexpected sign-in state: ${result.status}. Please try again.`);
       }
     } catch (err: any) {
       const errCode = err?.errors?.[0]?.code ?? "";
+
       if (errCode === "form_identifier_not_found") {
-        // User doesn't exist → create account seamlessly
+        // New user — create account
         try {
-          await signUp.create({ emailAddress: email });
-          await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-          setMethod("signUp");
-          setMode("verify");
+          const created = await signUp.create({ emailAddress: email });
+          if (created.status === "missing_requirements") {
+            await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+            setMethod("signUp");
+            setMode("verify");
+          } else if (created.status === "complete") {
+            await setSignUpActive({ session: created.createdSessionId });
+          } else {
+            await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+            setMethod("signUp");
+            setMode("verify");
+          }
         } catch (suErr: any) {
-          setErrorMsg(suErr?.errors?.[0]?.longMessage ?? "Could not create account. Please try again.");
+          setErrorMsg(suErr?.errors?.[0]?.longMessage ?? suErr?.message ?? "Could not create account. Please try again.");
         }
       } else {
-        setErrorMsg(err?.errors?.[0]?.longMessage ?? "Something went wrong. Please try again.");
+        setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? "Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -145,7 +166,7 @@ export default function AuthPage() {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signIn || !signUp) return;
+    if (!clerkReady) return;
     setLoading(true);
     setErrorMsg("");
 
@@ -154,11 +175,15 @@ export default function AuthPage() {
         const result = await signIn.attemptFirstFactor({ strategy: "email_code", code });
         if (result.status === "complete") {
           await setSignInActive({ session: result.createdSessionId });
+        } else {
+          setErrorMsg(`Sign-in incomplete: ${result.status}. Please try again.`);
         }
       } else {
         const result = await signUp.attemptEmailAddressVerification({ code });
         if (result.status === "complete") {
           await setSignUpActive({ session: result.createdSessionId });
+        } else {
+          setErrorMsg(`Verification incomplete: ${result.status}. Please try again.`);
         }
       }
     } catch (err: any) {
@@ -166,10 +191,26 @@ export default function AuthPage() {
       if (clerkCode === "form_code_incorrect") {
         setErrorMsg("Incorrect code. Check your email and try again.");
       } else {
-        setErrorMsg(err?.errors?.[0]?.longMessage ?? "Verification failed. Please try again.");
+        setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? "Verification failed. Please try again.");
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOAuth = async (provider: "google" | "github") => {
+    if (!clerkReady) return;
+    setOauthLoading(provider);
+    setErrorMsg("");
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: `oauth_${provider}`,
+        redirectUrl: `${window.location.origin}${basePath}/sso-callback`,
+        redirectUrlComplete: `${window.location.origin}${basePath}/app`,
+      });
+    } catch (err: any) {
+      setErrorMsg(err?.errors?.[0]?.longMessage ?? err?.message ?? `${provider} sign-in failed. Please use email below.`);
+      setOauthLoading(null);
     }
   };
 
@@ -177,7 +218,6 @@ export default function AuthPage() {
     const val = e.target.value.replace(/\D/g, "").slice(0, 6);
     setCode(val);
   };
-
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0a]">
@@ -204,6 +244,35 @@ export default function AuthPage() {
                   Enter your email — we'll sign you in or create your account automatically.
                 </p>
 
+                {/* OAuth buttons */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {([
+                    { name: "Google", provider: "google" as const, logo: "https://www.svgrepo.com/show/475656/google-color.svg" },
+                    { name: "GitHub", provider: "github" as const, logo: "https://www.svgrepo.com/show/512317/github-142.svg" },
+                  ]).map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => handleOAuth(p.provider)}
+                      disabled={!clerkReady || oauthLoading !== null}
+                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+                    >
+                      {oauthLoading === p.provider ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <img src={p.logo} className="w-4 h-4" alt={p.name} />
+                      )}
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-xs text-zinc-600">or continue with email</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+
                 <form onSubmit={handleEmailSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm text-zinc-300 mb-1.5 font-medium">Email address</label>
@@ -212,7 +281,7 @@ export default function AuthPage() {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => { setEmail(e.target.value); setErrorMsg(""); }}
                         placeholder="you@example.com"
                         required
                         autoFocus
@@ -227,17 +296,18 @@ export default function AuthPage() {
 
                   <button
                     type="submit"
-                    disabled={loading || !email}
+                    disabled={loading || !email || !clerkReady}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : !clerkReady ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Loading…</>
                     ) : (
                       <>Continue <ArrowRight className="w-4 h-4" /></>
                     )}
                   </button>
                 </form>
-
               </motion.div>
             ) : (
               <motion.div
