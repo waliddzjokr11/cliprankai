@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
-import { useListAnalyses, useGetStats, getGetStatsQueryKey, getListAnalysesQueryKey } from "@workspace/api-client-react";
+import { useGetStats, getGetStatsQueryKey } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
 import { Film, Zap, Lock, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -7,8 +9,18 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 export default function HistoryPage() {
   const [, setLocation] = useLocation();
   usePageTitle("Analysis History");
-  const { data: analyses, isLoading } = useListAnalyses({
-    query: { queryKey: getListAnalysesQueryKey() },
+  const { user } = useUser();
+  const userId = user?.id;
+
+  const { data: analyses, isLoading } = useQuery({
+    queryKey: ["/api/videos", userId],
+    queryFn: async () => {
+      const url = userId ? `/api/videos?userId=${encodeURIComponent(userId)}` : "/api/videos";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch analyses");
+      return res.json();
+    },
+    enabled: !!userId,
   });
 
   const { data: stats } = useGetStats({
@@ -104,7 +116,7 @@ export default function HistoryPage() {
           </motion.div>
         ) : (
           <div className="space-y-3">
-            {analyses.map((analysis, i) => (
+            {(analyses as any[]).map((analysis: any, i: number) => (
               <motion.div
                 key={analysis.id}
                 initial={{ opacity: 0, y: 16 }}

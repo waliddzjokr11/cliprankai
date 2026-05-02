@@ -4,8 +4,9 @@ import { z } from "zod/v4";
 
 export const analysesTable = pgTable("analyses", {
   id: text("id").primaryKey(),
+  userId: text("user_id"),
   filename: text("filename").notNull(),
-  fingerprint: text("fingerprint").notNull().unique(),
+  fingerprint: text("fingerprint").notNull(),
   overallScore: real("overall_score").notNull(),
   pacingScore: real("pacing_score").notNull(),
   visualHookScore: real("visual_hook_score").notNull(),

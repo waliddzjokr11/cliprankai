@@ -10,7 +10,7 @@ import { execSync } from "child_process";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "ffprobe-static";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { db, analysesTable, userCreditsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger.js";
@@ -408,6 +408,7 @@ async function processVideoJob(
     const clamp = (v: unknown) => Math.min(100, Math.max(0, Number(v) || 0));
     const analysis = {
       id: randomUUID(),
+      userId: userId || null,
       filename,
       fingerprint,
       overallScore: clamp(parsed.overallScore),
@@ -479,15 +480,18 @@ router.post("/upload", upload.single("video"), async (req, res) => {
       getVideoDuration(file.path).catch(() => 30),
     ]);
 
-    // 2. Cache check
+    // 2. Cache check — scoped per user so each user gets their own analysis
+    const cacheConditions = userId
+      ? and(eq(analysesTable.fingerprint, fingerprint), eq(analysesTable.userId, userId))
+      : eq(analysesTable.fingerprint, fingerprint);
     const cached = await db
       .select()
       .from(analysesTable)
-      .where(eq(analysesTable.fingerprint, fingerprint))
+      .where(cacheConditions)
       .limit(1);
 
     if (cached.length > 0) {
-      req.log.info({ fingerprint }, "Cache hit");
+      req.log.info({ fingerprint, userId }, "Cache hit");
       rmSync(file.path, { force: true });
       return res.json({ analysisId: cached[0].id, durationSeconds });
     }

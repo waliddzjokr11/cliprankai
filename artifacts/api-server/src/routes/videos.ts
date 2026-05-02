@@ -88,14 +88,20 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-// GET /api/videos — list recent analyses
+// GET /api/videos — list analyses for a specific user
 router.get("/", async (req, res) => {
+  const userId = req.query.userId as string | undefined;
   try {
-    const analyses = await db
+    const query = db
       .select()
       .from(analysesTable)
       .orderBy(desc(analysesTable.createdAt))
-      .limit(20);
+      .limit(50);
+
+    const analyses = userId
+      ? await query.where(eq(analysesTable.userId, userId))
+      : await query;
+
     res.json(analyses.map(serializeAnalysis));
   } catch (err) {
     req.log.error({ err }, "Failed to list analyses");
