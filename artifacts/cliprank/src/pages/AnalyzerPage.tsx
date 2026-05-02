@@ -1,20 +1,19 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useAnalyzeVideo,
   useGetAnalysis,
   useGetStats,
   getGetAnalysisQueryKey,
   getGetStatsQueryKey,
   getListAnalysesQueryKey,
 } from "@workspace/api-client-react";
-import { useVideoProcessor } from "@/hooks/useVideoProcessor";
+import { useVideoUpload } from "@/hooks/useVideoUpload";
 import { useCredits } from "@/hooks/useCredits";
 import { RadialProgress } from "@/components/RadialProgress";
 import { PaypalButton } from "@/components/PaypalButton";
 import { BuyCreditsModal } from "@/components/BuyCreditsModal";
-import { AnalysisProgress, type ProgressStep } from "@/components/AnalysisProgress";
+import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import {
@@ -39,7 +38,7 @@ import {
 } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 
-type Step = "idle" | "processing" | "uploading" | "analyzing" | "done";
+type Step = "idle" | "processing" | "done";
 
 // Parse competitor insights JSON safely
 interface CompetitorInsights {
@@ -133,7 +132,6 @@ function ViralityBadge({ score }: { score: number }) {
 
 export default function AnalyzerPage() {
   const [step, setStep] = useState<Step>("idle");
-  const [progressStep, setProgressStep] = useState<ProgressStep>("reading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
@@ -144,8 +142,7 @@ export default function AnalyzerPage() {
   const [currentFilename, setCurrentFilename] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { processVideo, progress } = useVideoProcessor();
-  const analyzeVideo = useAnalyzeVideo();
+  const { upload, progress: uploadProgress, reset: resetUpload } = useVideoUpload();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { userId, credits, creditsRequired, hasEnoughCredits, refetch: refetchCredits } = useCredits();
@@ -174,81 +171,41 @@ export default function AnalyzerPage() {
     }
 
     setCurrentFilename(file.name);
+    setStep("processing");
 
     try {
-      setStep("processing");
-      setProgressStep("reading");
+      const result = await upload(file, userId ?? "");
 
-      // Brief pause so "reading" step is visible
-      await new Promise((r) => setTimeout(r, 600));
-      setProgressStep("extracting");
-
-      const result = await processVideo(file);
-
-      // Credit gate
-      if (!hasEnoughCredits(result.durationSeconds)) {
-        const required = creditsRequired(result.durationSeconds);
-        setPendingFile(file);
-        setStep("idle");
-        setShowBuyCredits(true);
-        toast({
-          title: "Not enough credits",
-          description: `This video needs ${required} credit${required !== 1 ? "s" : ""} (${Math.floor(result.durationSeconds)}s ÷ 10). You have ${credits ?? 0}.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setStep("uploading");
-      setProgressStep("sending");
-
-      // Brief pause so "sending" step is visible
-      await new Promise((r) => setTimeout(r, 400));
-      setProgressStep("transcribing");
-
-      setStep("analyzing");
-
-      // Start scoring phase after a moment
-      const scoringTimer = setTimeout(() => setProgressStep("scoring"), 3000);
-      const researchTimer = setTimeout(() => setProgressStep("researching"), 8000);
-
-      let data;
-      try {
-        data = await analyzeVideo.mutateAsync({
-          data: {
-            frames: result.frames,
-            audioBase64: result.audioBase64 ?? undefined,
-            filename: file.name,
-            durationSeconds: result.durationSeconds,
-            fingerprint: result.fingerprint,
-            userId: userId ?? "",
-          },
-        });
-      } finally {
-        clearTimeout(scoringTimer);
-        clearTimeout(researchTimer);
-      }
-
-      setAnalysisId(data.id);
+      setAnalysisId(result.analysisId);
       setStep("done");
       refetchCredits();
 
       queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetStatsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(result.analysisId) });
     } catch (err: any) {
-      if (err?.status === 402 || err?.response?.status === 402) {
+      if (err?.status === 402) {
+        setPendingFile(file);
         setStep("idle");
         setShowBuyCredits(true);
+        const required = err?.creditsRequired ?? "?";
+        const available = err?.creditsAvailable ?? credits ?? 0;
+        toast({
+          title: "Not enough credits",
+          description: `This video needs ${required} credit${required !== 1 ? "s" : ""}. You have ${available}.`,
+          variant: "destructive",
+        });
         return;
       }
       toast({
         title: "Analysis failed",
-        description: "Something went wrong. Please try again.",
+        description: err?.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
       setStep("idle");
+      resetUpload();
     }
-  }, [processVideo, analyzeVideo, queryClient, toast, hasEnoughCredits, creditsRequired, credits, refetchCredits, userId]);
+  }, [upload, resetUpload, queryClient, toast, credits, refetchCredits, userId]);
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files?.length) return;
@@ -271,10 +228,10 @@ export default function AnalyzerPage() {
     setRetentionOpen(false);
     setPendingFile(null);
     setCurrentFilename("");
-    setProgressStep("reading");
+    resetUpload();
   };
 
-  const handleCreditsPurchased = () => {
+  const handleCreditsPurchased = (_newBalance: number) => {
     refetchCredits();
     if (pendingFile) {
       const file = pendingFile;
@@ -414,7 +371,7 @@ export default function AnalyzerPage() {
                 <div className="flex items-center gap-5 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <Zap className="w-3 h-3 text-primary" />
-                    Client-side processing
+                    Server-side processing
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Layers className="w-3 h-3 text-primary" />
@@ -422,7 +379,7 @@ export default function AnalyzerPage() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3 h-3 text-primary" />
-                    Results in ~15s
+                    Real-time progress
                   </span>
                 </div>
               </motion.div>
@@ -437,8 +394,8 @@ export default function AnalyzerPage() {
             </motion.div>
           )}
 
-          {/* PROCESSING / UPLOADING / ANALYZING: Step progress */}
-          {(step === "processing" || step === "uploading" || step === "analyzing") && (
+          {/* PROCESSING: Server-side step progress */}
+          {step === "processing" && (
             <motion.div
               key="progress"
               initial={{ opacity: 0 }}
@@ -448,8 +405,8 @@ export default function AnalyzerPage() {
               className="flex flex-col items-center justify-center min-h-[60vh]"
             >
               <AnalysisProgress
-                currentStep={progressStep}
-                extractionProgress={progress}
+                currentStep={uploadProgress.step === "idle" || uploadProgress.step === "done" || uploadProgress.step === "error" ? "uploading" : uploadProgress.step}
+                progressPct={uploadProgress.pct}
                 filename={currentFilename}
               />
             </motion.div>

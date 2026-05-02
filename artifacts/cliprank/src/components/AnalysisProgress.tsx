@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Upload,
   Cpu,
@@ -9,18 +9,10 @@ import {
   Loader2,
   Film,
 } from "lucide-react";
-
-export type ProgressStep =
-  | "idle"
-  | "reading"
-  | "extracting"
-  | "sending"
-  | "transcribing"
-  | "scoring"
-  | "researching";
+import type { UploadStep } from "@/hooks/useVideoUpload";
 
 interface StepConfig {
-  id: ProgressStep;
+  id: UploadStep;
   icon: React.ReactNode;
   label: string;
   sublabel: string;
@@ -28,22 +20,16 @@ interface StepConfig {
 
 const STEPS: StepConfig[] = [
   {
-    id: "reading",
+    id: "uploading",
     icon: <Upload className="w-4 h-4" />,
-    label: "Reading video",
-    sublabel: "Checking duration & format",
+    label: "Uploading video",
+    sublabel: "Streaming to server for processing",
   },
   {
     id: "extracting",
     icon: <Film className="w-4 h-4" />,
     label: "Extracting frames",
-    sublabel: "Adaptive sampling client-side",
-  },
-  {
-    id: "sending",
-    icon: <Cpu className="w-4 h-4" />,
-    label: "Sending to AI",
-    sublabel: "Uploading frames for analysis",
+    sublabel: "Server sampling 1 frame every 3 seconds",
   },
   {
     id: "transcribing",
@@ -65,18 +51,21 @@ const STEPS: StepConfig[] = [
   },
 ];
 
-function getStepIndex(step: ProgressStep): number {
-  return STEPS.findIndex((s) => s.id === step);
+// Steps that appear in progress order
+const STEP_ORDER: UploadStep[] = ["uploading", "extracting", "transcribing", "scoring", "researching"];
+
+function getStepIndex(step: UploadStep): number {
+  return STEP_ORDER.indexOf(step);
 }
 
 interface Props {
-  currentStep: ProgressStep;
-  extractionProgress: number;
+  currentStep: UploadStep;
+  progressPct: number;
   filename?: string;
 }
 
-export function AnalysisProgress({ currentStep, extractionProgress, filename }: Props) {
-  const currentIdx = getStepIndex(currentStep);
+export function AnalysisProgress({ currentStep, progressPct, filename }: Props) {
+  const currentIdx = Math.max(0, getStepIndex(currentStep));
 
   return (
     <motion.div
@@ -106,11 +95,7 @@ export function AnalysisProgress({ currentStep, extractionProgress, filename }: 
               animate={{ opacity: isPending ? 0.35 : 1, x: 0 }}
               transition={{ duration: 0.35, delay: idx * 0.05 }}
               className={`flex items-start gap-4 p-4 rounded-xl transition-colors ${
-                isActive
-                  ? "bg-white/[0.06] border border-white/10"
-                  : isDone
-                  ? "bg-transparent"
-                  : "bg-transparent"
+                isActive ? "bg-white/[0.06] border border-white/10" : "bg-transparent"
               }`}
             >
               {/* Icon column */}
@@ -130,9 +115,7 @@ export function AnalysisProgress({ currentStep, extractionProgress, filename }: 
                       animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
-                    <div className="relative z-10 text-indigo-400">
-                      {step.icon}
-                    </div>
+                    <div className="relative z-10 text-indigo-400">{step.icon}</div>
                   </div>
                 ) : (
                   <div className="w-5 h-5 flex items-center justify-center text-zinc-600">
@@ -146,38 +129,45 @@ export function AnalysisProgress({ currentStep, extractionProgress, filename }: 
                 <div className="flex items-center gap-2">
                   <span
                     className={`text-sm font-medium ${
-                      isDone
-                        ? "text-emerald-400"
-                        : isActive
-                        ? "text-white"
-                        : "text-zinc-600"
+                      isDone ? "text-emerald-400" : isActive ? "text-white" : "text-zinc-600"
                     }`}
                   >
                     {step.label}
                   </span>
-                  {isActive && (
-                    <Loader2 className="w-3 h-3 text-indigo-400 animate-spin flex-shrink-0" />
-                  )}
+                  {isActive && <Loader2 className="w-3 h-3 text-indigo-400 animate-spin flex-shrink-0" />}
                 </div>
-                <p
-                  className={`text-xs mt-0.5 ${
-                    isActive ? "text-zinc-400" : "text-zinc-600"
-                  }`}
-                >
+                <p className={`text-xs mt-0.5 ${isActive ? "text-zinc-400" : "text-zinc-600"}`}>
                   {step.sublabel}
                 </p>
 
-                {/* Extraction progress bar */}
-                {isActive && step.id === "extracting" && (
+                {/* Upload progress bar */}
+                {isActive && step.id === "uploading" && progressPct > 0 && (
                   <div className="mt-2">
                     <div className="flex justify-between text-xs text-zinc-500 mb-1">
-                      <span>Frames extracted</span>
-                      <span className="font-mono">{extractionProgress}%</span>
+                      <span>Uploading</span>
+                      <span className="font-mono">{progressPct}%</span>
                     </div>
                     <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
                       <motion.div
                         className="h-full rounded-full bg-indigo-500"
-                        style={{ width: `${extractionProgress}%` }}
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 0.2 }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Frame extraction progress bar */}
+                {isActive && step.id === "extracting" && progressPct > 0 && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs text-zinc-500 mb-1">
+                      <span>Frames extracted</span>
+                      <span className="font-mono">{progressPct}%</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-indigo-500"
+                        animate={{ width: `${progressPct}%` }}
                         transition={{ duration: 0.1 }}
                       />
                     </div>
@@ -192,12 +182,7 @@ export function AnalysisProgress({ currentStep, extractionProgress, filename }: 
                         key={label}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 1, 0] }}
-                        transition={{
-                          duration: 2,
-                          delay: i * 0.5,
-                          repeat: Infinity,
-                          repeatDelay: 1.5,
-                        }}
+                        transition={{ duration: 2, delay: i * 0.5, repeat: Infinity, repeatDelay: 1.5 }}
                         className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
                       >
                         {label}
