@@ -700,6 +700,49 @@ export default function AnalyzerPage() {
                 </motion.div>
               )}
 
+              {/* Trend Alignment */}
+              {(analysis.trendScore !== null && analysis.trendScore !== undefined) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.38 }}
+                  className="glass-card p-5"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-cyan-400" />
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Trend Alignment
+                      </h3>
+                      {analysis.niche && (
+                        <span className="text-xs text-zinc-500">· {analysis.niche}</span>
+                      )}
+                    </div>
+                    <span className={`text-sm font-mono font-bold ${
+                      analysis.trendScore >= 70 ? "text-emerald-400" :
+                      analysis.trendScore >= 40 ? "text-amber-400" : "text-rose-400"
+                    }`}>
+                      {Math.round(analysis.trendScore)}/100
+                    </span>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-3">
+                    <motion.div
+                      className={`h-full rounded-full ${
+                        analysis.trendScore >= 70 ? "bg-emerald-500" :
+                        analysis.trendScore >= 40 ? "bg-amber-500" : "bg-rose-500"
+                      }`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${analysis.trendScore}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                    />
+                  </div>
+                  {analysis.trendInsights && (
+                    <p className="text-xs text-foreground/80 leading-relaxed">{analysis.trendInsights}</p>
+                  )}
+                </motion.div>
+              )}
+
               {/* Transcript (collapsible) */}
               {analysis.transcript && (
                 <motion.div

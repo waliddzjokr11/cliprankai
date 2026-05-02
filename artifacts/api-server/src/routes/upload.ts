@@ -6,8 +6,8 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { pipeline } from "stream/promises";
 import multer from "multer";
+import { execSync } from "child_process";
 import ffmpeg from "fluent-ffmpeg";
-import ffmpegPath from "ffmpeg-static";
 import { eq, sql } from "drizzle-orm";
 import { db, analysesTable, userCreditsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -22,10 +22,14 @@ import {
   removeClient,
 } from "../lib/jobStore.js";
 
-// Configure fluent-ffmpeg to use bundled binary
-if (ffmpegPath) {
-  ffmpeg.setFfmpegPath(ffmpegPath);
+// Discover system ffmpeg/ffprobe — works on NixOS Replit; avoids ffmpeg-static bundling issues
+function whichBinary(name: string): string | null {
+  try { return execSync(`which ${name}`, { encoding: "utf8" }).trim(); } catch { return null; }
 }
+const sysFfmpeg = whichBinary("ffmpeg");
+const sysFfprobe = whichBinary("ffprobe");
+if (sysFfmpeg) { ffmpeg.setFfmpegPath(sysFfmpeg); logger.info({ path: sysFfmpeg }, "ffmpeg resolved"); }
+if (sysFfprobe) { ffmpeg.setFfprobePath(sysFfprobe); logger.info({ path: sysFfprobe }, "ffprobe resolved"); }
 
 const router = Router();
 
@@ -264,9 +268,19 @@ CAPTION SCORE:
 - 61-80: Word-by-word, good contrast
 - 81-100: Animated/styled captions, high contrast, optimally placed
 
+TREND ALIGNMENT SCORE — how well the content topic, format, and style matches currently trending content (2024-2025):
+- 0-20: Content is outdated, overused format, or targets a declining niche
+- 21-40: Niche exists but format is not what's currently performing
+- 41-60: Reasonable niche but not riding any specific current wave
+- 61-80: Topic or format is aligned with current platform trends
+- 81-100: Riding a clear trend wave — topic is hot RIGHT NOW on at least one major platform
+Consider: Is this topic/niche currently getting massive organic distribution? Is the VIDEO FORMAT (POV, green screen, duet, reaction, GRWM, etc.) what's trending? Does it use current audio trends or viral sounds (if detectable from transcript)?
+
 NICHE DETECTION — identify the specific content category.
 COMPETITOR ANALYSIS — based on your knowledge of what viral videos in this niche do. Provide JSON with: topPatterns (array of 5), winningFormula (1-2 sentences), gapAnalysis (what this video is missing), nicheExamples (2-3 famous viral creators/videos in this niche).
 RETENTION RISK — identify drop-off risks: first 2s, mid-video, final seconds.
+
+AUDIO/TRANSCRIPT ANALYSIS — If a transcript is provided, assess: spoken hook quality (first 5 words), speech pacing, whether the spoken content matches viral formats (storytelling, listicle, tutorial, reaction). A strong spoken hook in the transcript boosts viralityScore.
 
 Return ONLY valid JSON:
 {
@@ -274,13 +288,15 @@ Return ONLY valid JSON:
   "visualHookScore": <0-100>,
   "captionReadabilityScore": <0-100>,
   "viralityScore": <0-100>,
-  "overallScore": <weighted: hook 35% + pacing 25% + captions 20% + virality 20%>,
+  "trendScore": <0-100, trend alignment score>,
+  "overallScore": <weighted: hook 30% + pacing 20% + captions 15% + virality 20% + trend 15%>,
   "niche": "<specific niche>",
   "nichePlatform": "<TikTok | Instagram Reels | YouTube Shorts | All platforms>",
-  "summary": "<2-3 sentences honest assessment>",
+  "summary": "<2-3 sentences honest assessment including audio/spoken content quality>",
   "pacingFeedback": "<specific actionable feedback>",
   "visualHookFeedback": "<specific: what IS the first 3s, what SHOULD it be>",
   "captionFeedback": "<exact issue and fix>",
+  "trendInsights": "<2-3 sentences: what trend this could ride, what format is hot in this niche right now, specific suggestions to make it more trend-aligned>",
   "retentionRisk": "<JSON string: {opening, midVideo, ending}>",
   "competitorInsights": "<JSON string: {topPatterns, winningFormula, gapAnalysis, nicheExamples}>",
   "professionalAdvice": "<3-4 paragraphs of professional editing advice>",
@@ -373,20 +389,23 @@ async function processVideoJob(
 
     // Step 5: Save to DB
     const required = creditsRequired(durationSeconds);
+    const clamp = (v: unknown) => Math.min(100, Math.max(0, Number(v) || 0));
     const analysis = {
       id: randomUUID(),
       filename,
       fingerprint,
-      overallScore: Math.min(100, Math.max(0, Number(parsed.overallScore) || 0)),
-      pacingScore: Math.min(100, Math.max(0, Number(parsed.pacingScore) || 0)),
-      visualHookScore: Math.min(100, Math.max(0, Number(parsed.visualHookScore) || 0)),
-      captionReadabilityScore: Math.min(100, Math.max(0, Number(parsed.captionReadabilityScore) || 0)),
-      viralityScore: Math.min(100, Math.max(0, Number(parsed.viralityScore) || 0)),
+      overallScore: clamp(parsed.overallScore),
+      pacingScore: clamp(parsed.pacingScore),
+      visualHookScore: clamp(parsed.visualHookScore),
+      captionReadabilityScore: clamp(parsed.captionReadabilityScore),
+      viralityScore: clamp(parsed.viralityScore),
+      trendScore: clamp(parsed.trendScore),
       transcript,
       summary: String(parsed.summary || ""),
       pacingFeedback: String(parsed.pacingFeedback || ""),
       visualHookFeedback: String(parsed.visualHookFeedback || ""),
       captionFeedback: String(parsed.captionFeedback || ""),
+      trendInsights: String(parsed.trendInsights || ""),
       niche: String(parsed.niche || ""),
       nichePlatform: String(parsed.nichePlatform || ""),
       retentionRisk: typeof parsed.retentionRisk === "string"

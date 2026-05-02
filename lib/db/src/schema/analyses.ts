@@ -28,6 +28,9 @@ export const analysesTable = pgTable("analyses", {
   viralityScore: real("virality_score"),
   competitorInsights: text("competitor_insights"),
   retentionRisk: text("retention_risk"),
+  // Trend analysis (v3)
+  trendScore: real("trend_score"),
+  trendInsights: text("trend_insights"),
 });
 
 export const insertAnalysisSchema = createInsertSchema(analysesTable).omit({ createdAt: true });

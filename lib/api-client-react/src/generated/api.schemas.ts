@@ -33,6 +33,8 @@ export interface VideoAnalysis {
   viralityScore?: number | null;
   competitorInsights?: string | null;
   retentionRisk?: string | null;
+  trendScore?: number | null;
+  trendInsights?: string | null;
 }
 
 export interface AnalyzeVideoBody {

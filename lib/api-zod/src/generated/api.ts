@@ -42,6 +42,8 @@ export const ListAnalysesResponseItem = zod.object({
   viralityScore: zod.number().nullish(),
   competitorInsights: zod.string().nullish(),
   retentionRisk: zod.string().nullish(),
+  trendScore: zod.number().nullish(),
+  trendInsights: zod.string().nullish(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
 
@@ -84,6 +86,8 @@ export const AnalyzeVideoResponse = zod.object({
   viralityScore: zod.number().nullish(),
   competitorInsights: zod.string().nullish(),
   retentionRisk: zod.string().nullish(),
+  trendScore: zod.number().nullish(),
+  trendInsights: zod.string().nullish(),
 });
 
 /**
@@ -117,6 +121,8 @@ export const GetAnalysisResponse = zod.object({
   viralityScore: zod.number().nullish(),
   competitorInsights: zod.string().nullish(),
   retentionRisk: zod.string().nullish(),
+  trendScore: zod.number().nullish(),
+  trendInsights: zod.string().nullish(),
 });
 
 /**
@@ -154,6 +160,8 @@ export const UnlockPremiumResponse = zod.object({
   viralityScore: zod.number().nullish(),
   competitorInsights: zod.string().nullish(),
   retentionRisk: zod.string().nullish(),
+  trendScore: zod.number().nullish(),
+  trendInsights: zod.string().nullish(),
 });
 
 /**

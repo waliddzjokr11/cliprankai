@@ -308,6 +308,12 @@ components:
         retentionRisk:
           type: string
           nullable: true
+        trendScore:
+          type: number
+          nullable: true
+        trendInsights:
+          type: string
+          nullable: true
       required:
         - id
         - filename
