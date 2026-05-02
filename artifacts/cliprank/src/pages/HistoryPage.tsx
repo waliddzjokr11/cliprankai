@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useListAnalyses, useGetStats, getGetStatsQueryKey, getListAnalysesQueryKey } from "@workspace/api-client-react";
-import { Film, Zap, Lock, BarChart3, TrendingUp } from "lucide-react";
-import { Link } from "wouter";
+import { Film, Zap, Lock, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 export default function HistoryPage() {
+  const [, setLocation] = useLocation();
   const { data: analyses, isLoading } = useListAnalyses({
     query: { queryKey: getListAnalysesQueryKey() },
   });
@@ -109,7 +110,7 @@ export default function HistoryPage() {
                 transition={{ delay: i * 0.05 }}
                 className="glass-card p-5 flex items-center gap-6 hover:bg-white/[0.03] transition-colors cursor-pointer group"
                 data-testid={`card-analysis-${analysis.id}`}
-                onClick={() => window.location.href = `/app`}
+                onClick={() => setLocation(`/app/${analysis.id}`)}
               >
                 {/* Score badge */}
                 <div className={`w-14 h-14 rounded-xl border flex items-center justify-center flex-shrink-0 ${getScoreBg(analysis.overallScore)}`}>
@@ -157,6 +158,9 @@ export default function HistoryPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Click indicator */}
+                <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
               </motion.div>
             ))}
           </div>

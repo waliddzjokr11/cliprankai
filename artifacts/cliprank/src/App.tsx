@@ -104,6 +104,12 @@ function AppRoute() {
   return <AnalyzerPage />;
 }
 
+function AnalysisDetailRoute({ params }: { params: { analysisId: string } }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (isLoaded && !isSignedIn) return <Redirect to="/" />;
+  return <AnalyzerPage initialAnalysisId={params.analysisId} />;
+}
+
 function HistoryRoute() {
   const { isLoaded, isSignedIn } = useAuth();
   if (isLoaded && !isSignedIn) return <Redirect to="/" />;
@@ -152,6 +158,7 @@ function ClerkProviderWithRoutes() {
           <Switch>
             <Route path="/" component={HomeRoute} />
             <Route path="/app" component={AppRoute} />
+            <Route path="/app/:analysisId" component={AnalysisDetailRoute} />
             <Route path="/history" component={HistoryRoute} />
             <Route path="/learn-more" component={LearnMorePage} />
             <Route path="/pricing" component={PricingPage} />

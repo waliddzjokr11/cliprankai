@@ -14,6 +14,9 @@ const router = Router();
 
 const CREDITS_PER_10S = 1;
 
+// Admin users always get premium unlocked and are never blocked by credits
+const ADMIN_USER_IDS = new Set(["user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+
 function serializeAnalysis(a: typeof analysesTable.$inferSelect) {
   return {
     id: a.id,
@@ -119,27 +122,30 @@ router.post("/analyze", async (req, res) => {
     req.log.error({ err }, "Cache lookup failed");
   }
 
-  // Credit check
+  // Credit check (skipped for admin users)
+  const isAdmin = ADMIN_USER_IDS.has(userId);
   const required = creditsRequired(durationSeconds);
-  try {
-    const [userRow] = await db
-      .select()
-      .from(userCreditsTable)
-      .where(eq(userCreditsTable.userId, userId))
-      .limit(1);
+  if (!isAdmin) {
+    try {
+      const [userRow] = await db
+        .select()
+        .from(userCreditsTable)
+        .where(eq(userCreditsTable.userId, userId))
+        .limit(1);
 
-    const available = userRow?.credits ?? 0;
-    if (available < required) {
-      req.log.warn({ userId, required, available }, "Insufficient credits");
-      return res.status(402).json({
-        error: "Insufficient credits",
-        creditsRequired: required,
-        creditsAvailable: available,
-      });
+      const available = userRow?.credits ?? 0;
+      if (available < required) {
+        req.log.warn({ userId, required, available }, "Insufficient credits");
+        return res.status(402).json({
+          error: "Insufficient credits",
+          creditsRequired: required,
+          creditsAvailable: available,
+        });
+      }
+    } catch (err) {
+      req.log.error({ err }, "Credit check failed");
+      return res.status(500).json({ error: "Internal server error" });
     }
-  } catch (err) {
-    req.log.error({ err }, "Credit check failed");
-    return res.status(500).json({ error: "Internal server error" });
   }
 
   // Transcribe audio if provided
@@ -302,25 +308,27 @@ Analyze these ${selectedFrames.length} frames — NOTE: no captions in transcrip
       visualHeatmap: typeof parsed.visualHeatmap === "string"
         ? parsed.visualHeatmap
         : JSON.stringify(parsed.visualHeatmap || {}),
-      isPremiumUnlocked: false,
+      isPremiumUnlocked: isAdmin,
       durationSeconds,
       frameCount: selectedFrames.length,
     };
 
     const [inserted] = await db.insert(analysesTable).values(analysis).returning();
 
-    // Deduct credits after successful analysis
-    try {
-      await db
-        .update(userCreditsTable)
-        .set({
-          credits: sql`${userCreditsTable.credits} - ${required}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(userCreditsTable.userId, userId));
-      req.log.info({ userId, creditsDeducted: required }, "Credits deducted");
-    } catch (err) {
-      req.log.error({ err }, "Failed to deduct credits — analysis saved anyway");
+    // Deduct credits after successful analysis (skipped for admin)
+    if (!isAdmin) {
+      try {
+        await db
+          .update(userCreditsTable)
+          .set({
+            credits: sql`${userCreditsTable.credits} - ${required}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(userCreditsTable.userId, userId));
+        req.log.info({ userId, creditsDeducted: required }, "Credits deducted");
+      } catch (err) {
+        req.log.error({ err }, "Failed to deduct credits — analysis saved anyway");
+      }
     }
 
     return res.json(serializeAnalysis(inserted));

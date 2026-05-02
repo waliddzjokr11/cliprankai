@@ -130,9 +130,9 @@ function ViralityBadge({ score }: { score: number }) {
   );
 }
 
-export default function AnalyzerPage() {
-  const [step, setStep] = useState<Step>("idle");
-  const [analysisId, setAnalysisId] = useState<string | null>(null);
+export default function AnalyzerPage({ initialAnalysisId }: { initialAnalysisId?: string } = {}) {
+  const [step, setStep] = useState<Step>(initialAnalysisId ? "done" : "idle");
+  const [analysisId, setAnalysisId] = useState<string | null>(initialAnalysisId ?? null);
   const [isDragging, setIsDragging] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [retentionOpen, setRetentionOpen] = useState(false);
