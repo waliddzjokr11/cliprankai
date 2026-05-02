@@ -39,6 +39,8 @@ function serializeAnalysis(a: typeof analysesTable.$inferSelect) {
     viralityScore: a.viralityScore ?? null,
     competitorInsights: a.competitorInsights ?? null,
     retentionRisk: a.retentionRisk ?? null,
+    trendScore: a.trendScore ?? null,
+    trendInsights: a.trendInsights ?? null,
   };
 }
 
@@ -270,8 +272,9 @@ Analyze these ${selectedFrames.length} frames — NOTE: no captions in transcrip
 
     const content = response.choices[0]?.message?.content ?? "{}";
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : "{}";
-    const parsed = JSON.parse(jsonStr);
+    const rawJson = jsonMatch ? jsonMatch[0] : "{}";
+    const sanitized = rawJson.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
+    const parsed = JSON.parse(sanitized);
 
     const analysis = {
       id: randomUUID(),

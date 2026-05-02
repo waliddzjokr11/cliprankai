@@ -381,7 +381,10 @@ async function processVideoJob(
 
     const content = response.choices[0]?.message?.content ?? "{}";
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : "{}");
+    // Strip bare control characters (ASCII 0x00–0x1F except \t \n \r) that cause JSON.parse to throw
+    const rawJson = jsonMatch ? jsonMatch[0] : "{}";
+    const sanitized = rawJson.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
+    const parsed = JSON.parse(sanitized);
 
     // Step 4: Viral pattern research (brief pause for UX, AI already did it above)
     emitProgress(job, "researching", 88, "Mapping viral patterns…");
