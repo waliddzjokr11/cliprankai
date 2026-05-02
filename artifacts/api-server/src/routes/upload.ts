@@ -8,6 +8,8 @@ import { pipeline } from "stream/promises";
 import multer from "multer";
 import { execSync } from "child_process";
 import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import { eq, sql } from "drizzle-orm";
 import { db, analysesTable, userCreditsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -22,14 +24,16 @@ import {
   removeClient,
 } from "../lib/jobStore.js";
 
-// Discover system ffmpeg/ffprobe — works on NixOS Replit; avoids ffmpeg-static bundling issues
+// Discover ffmpeg/ffprobe — prefer system binary (NixOS dev), fall back to static binary (production)
 function whichBinary(name: string): string | null {
   try { return execSync(`which ${name}`, { encoding: "utf8" }).trim(); } catch { return null; }
 }
-const sysFfmpeg = whichBinary("ffmpeg");
-const sysFfprobe = whichBinary("ffprobe");
+const sysFfmpeg = whichBinary("ffmpeg") ?? (ffmpegStatic as string | null);
+const sysFfprobe = whichBinary("ffprobe") ?? ((ffprobeStatic as { path?: string } | null)?.path ?? null);
 if (sysFfmpeg) { ffmpeg.setFfmpegPath(sysFfmpeg); logger.info({ path: sysFfmpeg }, "ffmpeg resolved"); }
+else { logger.error("ffmpeg binary not found — frame extraction will fail"); }
 if (sysFfprobe) { ffmpeg.setFfprobePath(sysFfprobe); logger.info({ path: sysFfprobe }, "ffprobe resolved"); }
+else { logger.error("ffprobe binary not found — duration detection will fail"); }
 
 const router = Router();
 
@@ -51,6 +55,14 @@ const upload = multer({
 });
 
 const CREDITS_PER_10S = 1;
+
+// ─── TESTING FLAG ────────────────────────────────────────────────────────────
+// Set TESTING_UNLIMITED_CREDITS=true to bypass all credit checks for everyone.
+// To turn off: delete the env var and restart the API server.
+const TESTING_UNLIMITED_CREDITS = process.env.TESTING_UNLIMITED_CREDITS === "true";
+// Admin users always bypass credit checks
+const ADMIN_USER_IDS = new Set(["user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+// ─────────────────────────────────────────────────────────────────────────────
 
 function creditsRequired(durationSeconds: number): number {
   return Math.ceil(durationSeconds / 10) * CREDITS_PER_10S;
@@ -316,6 +328,7 @@ async function processVideoJob(
   if (!job) return;
 
   job.status = "running";
+  const isAdmin = ADMIN_USER_IDS.has(userId);
   const frameDir = join(tmpdir(), `cliprank-frames-${jobId}`);
 
   try {
@@ -428,11 +441,13 @@ async function processVideoJob(
 
     const [inserted] = await db.insert(analysesTable).values(analysis).returning();
 
-    // Deduct credits
-    await db
-      .update(userCreditsTable)
-      .set({ credits: sql`${userCreditsTable.credits} - ${required}`, updatedAt: new Date() })
-      .where(eq(userCreditsTable.userId, userId));
+    // Deduct credits (skipped for admin and during testing)
+    if (!isAdmin && !TESTING_UNLIMITED_CREDITS) {
+      await db
+        .update(userCreditsTable)
+        .set({ credits: sql`${userCreditsTable.credits} - ${required}`, updatedAt: new Date() })
+        .where(eq(userCreditsTable.userId, userId));
+    }
 
     emitDone(job, inserted.id, durationSeconds);
   } catch (err: any) {
@@ -477,9 +492,10 @@ router.post("/upload", upload.single("video"), async (req, res) => {
       return res.json({ analysisId: cached[0].id, durationSeconds });
     }
 
-    // 3. Credit check
+    // 3. Credit check (skipped for admin users and during testing)
+    const isAdmin = ADMIN_USER_IDS.has(userId);
     const required = creditsRequired(durationSeconds);
-    if (userId) {
+    if (userId && !isAdmin && !TESTING_UNLIMITED_CREDITS) {
       const [userRow] = await db
         .select()
         .from(userCreditsTable)
