@@ -109,7 +109,7 @@ export default function HistoryPage() {
                 transition={{ delay: i * 0.05 }}
                 className="glass-card p-5 flex items-center gap-6 hover:bg-white/[0.03] transition-colors cursor-pointer group"
                 data-testid={`card-analysis-${analysis.id}`}
-                onClick={() => window.location.href = `/`}
+                onClick={() => window.location.href = `/app`}
               >
                 {/* Score badge */}
                 <div className={`w-14 h-14 rounded-xl border flex items-center justify-center flex-shrink-0 ${getScoreBg(analysis.overallScore)}`}>

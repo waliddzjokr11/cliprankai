@@ -156,6 +156,8 @@ function ClerkProviderWithRoutes() {
             <Route path="/learn-more" component={LearnMorePage} />
             <Route path="/pricing" component={PricingPage} />
             <Route path="/auth/*?" component={AuthRoute} />
+            {/* SSO callback — Clerk redirects here after OAuth */}
+            <Route path="/sso-callback" component={() => { window.location.href = `${basePath}/app`; return null; }} />
             {/* Legacy redirects — keep old URLs working */}
             <Route path="/sign-in/*?" component={AuthRoute} />
             <Route path="/sign-up/*?" component={AuthRoute} />

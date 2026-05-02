@@ -19,13 +19,13 @@ function NavBar() {
         </nav>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => nav("/sign-in")}
+            onClick={() => nav("/auth")}
             className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
           >
             Sign In
           </button>
           <button
-            onClick={() => nav("/sign-up")}
+            onClick={() => nav("/auth")}
             className="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
           >
             Get started free
@@ -39,18 +39,18 @@ function NavBar() {
 const features = [
   {
     icon: <Film className="w-5 h-5 text-indigo-400" />,
-    title: "Client-side frame extraction",
-    desc: "Video is processed in your browser using ffmpeg-wasm. Nothing is uploaded to our servers raw.",
+    title: "Hook-first frame extraction",
+    desc: "Server-side ffmpeg samples 5 dense frames in the first 3 seconds for precise hook scoring, then spreads frames evenly across the full video.",
   },
   {
     icon: <BarChart3 className="w-5 h-5 text-indigo-400" />,
-    title: "Three-axis AI scoring",
-    desc: "Pacing, Visual Hook strength, and Caption Readability — each scored 0–100 with specific feedback.",
+    title: "Four-axis AI scoring",
+    desc: "Visual Hook, Pacing, Caption Readability, and Virality Probability — each scored 0–100 with calibrated, actionable feedback.",
   },
   {
     icon: <Clock className="w-5 h-5 text-indigo-400" />,
-    title: "Results in seconds",
-    desc: "Edge-cached results mean repeat analyses return instantly. Your credits never expire.",
+    title: "Real-time progress + caching",
+    desc: "Live step-by-step updates as your video is processed. Identical videos return cached results instantly — credits never expire.",
   },
 ];
 
@@ -112,7 +112,7 @@ export default function LandingPage() {
             className="flex items-center justify-center gap-4 flex-wrap"
           >
             <button
-              onClick={() => nav("/sign-up")}
+              onClick={() => nav("/auth")}
               className="group flex items-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all"
             >
               Start analyzing free
@@ -209,7 +209,7 @@ export default function LandingPage() {
           <h2 className="text-4xl font-bold mb-4">Ready to rank your content?</h2>
           <p className="text-zinc-400 mb-8">Sign up free and get 3 credits instantly. One credit covers 10 seconds of video.</p>
           <button
-            onClick={() => nav("/sign-up")}
+            onClick={() => nav("/auth")}
             className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-lg transition-all"
           >
             Get started — it's free
@@ -227,7 +227,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 text-xs text-zinc-600">
             <button onClick={() => nav("/learn-more")} className="hover:text-zinc-400 transition-colors">Learn More</button>
             <button onClick={() => nav("/pricing")} className="hover:text-zinc-400 transition-colors">Pricing</button>
-            <button onClick={() => nav("/sign-in")} className="hover:text-zinc-400 transition-colors">Sign In</button>
+            <button onClick={() => nav("/auth")} className="hover:text-zinc-400 transition-colors">Sign In</button>
           </div>
           <p className="text-xs text-zinc-700">© 2026 ClipRank. All rights reserved.</p>
         </div>

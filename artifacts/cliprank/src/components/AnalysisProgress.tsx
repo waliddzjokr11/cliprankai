@@ -29,7 +29,7 @@ const STEPS: StepConfig[] = [
     id: "extracting",
     icon: <Film className="w-4 h-4" />,
     label: "Extracting frames",
-    sublabel: "Server sampling 1 frame every 3 seconds",
+    sublabel: "Dense hook sampling + spread across full video",
   },
   {
     id: "transcribing",

@@ -207,10 +207,10 @@ export default function AnalyzerPage() {
     }
   }, [upload, resetUpload, queryClient, toast, credits, refetchCredits, userId]);
 
-  const handleFileSelect = (files: FileList | null) => {
+  const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files?.length) return;
     processAndAnalyze(files[0]);
-  };
+  }, [processAndAnalyze]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

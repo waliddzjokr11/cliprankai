@@ -75,43 +75,80 @@ function getVideoDuration(filePath: string): Promise<number> {
   });
 }
 
-// Extract frames (1 per 3s, max 20, 320px wide) and return base64 array
-function extractFrames(filePath: string, duration: number, frameDir: string, onProgress: (pct: number) => void): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    const fps = duration > 30 ? "1/3" : "1/2";
-    const outputPattern = join(frameDir, "frame_%03d.jpg");
+// Hook-first frame extraction strategy:
+// • Pass 1 — Hook zone (first 3s): 2 fps at 640px, q:v 2 → up to 6 high-res hook frames
+// • Pass 2 — Body zone (4s → end): evenly spread up to 19 frames at 640px, q:v 3
+// Returns { hookCount, frames[] } so the AI message can label zones correctly.
+async function extractFrames(
+  filePath: string,
+  duration: number,
+  frameDir: string,
+  onProgress: (pct: number) => void
+): Promise<{ frames: string[]; hookCount: number }> {
+  const { readdirSync, readFileSync } = await import("fs");
 
+  const hookDir = join(frameDir, "hook");
+  const spreadDir = join(frameDir, "spread");
+  mkdirSync(hookDir, { recursive: true });
+  mkdirSync(spreadDir, { recursive: true });
+
+  const HOOK_END = Math.min(3.5, duration);
+  const MAX_HOOK = 6;
+  const MAX_SPREAD = 19;
+
+  // Pass 1: Hook frames — first 3.5s at 2 fps, 640px wide, high quality
+  await new Promise<void>((resolveP) => {
     ffmpeg(filePath)
-      .outputOptions(["-vf", `fps=${fps},scale=320:-1`, "-q:v", "3"])
-      .output(outputPattern)
-      .on("progress", (prog) => {
-        const pct = Math.min(Math.round((prog.percent ?? 0) * 0.9), 90);
-        onProgress(pct);
-      })
-      .on("end", async () => {
-        const { readdirSync, readFileSync } = await import("fs");
-        const frames: string[] = [];
-        const files = readdirSync(frameDir)
-          .filter((f) => f.startsWith("frame_") && f.endsWith(".jpg"))
-          .sort()
-          .slice(0, 20);
-
-        for (const f of files) {
-          const buf = readFileSync(join(frameDir, f));
-          frames.push(buf.toString("base64"));
-        }
-        resolve(frames);
-      })
-      .on("error", reject)
+      .outputOptions([
+        "-t", String(HOOK_END),
+        "-vf", "fps=2,scale=640:-1",
+        "-q:v", "2",
+        "-frames:v", String(MAX_HOOK),
+      ])
+      .output(join(hookDir, "h_%03d.jpg"))
+      .on("end", () => resolveP())
+      .on("error", () => resolveP())
       .run();
   });
+
+  onProgress(40);
+
+  // Pass 2: Spread frames — from 4s to end, evenly sampled, 640px, normal quality
+  if (duration > 5) {
+    const bodyDuration = duration - 4;
+    const spreadFps = Math.min(MAX_SPREAD / bodyDuration, 0.5).toFixed(6);
+    await new Promise<void>((resolveP) => {
+      ffmpeg(filePath)
+        .outputOptions([
+          "-ss", "4",
+          "-vf", `fps=${spreadFps},scale=640:-1`,
+          "-q:v", "3",
+          "-frames:v", String(MAX_SPREAD),
+        ])
+        .output(join(spreadDir, "s_%03d.jpg"))
+        .on("end", () => resolveP())
+        .on("error", () => resolveP())
+        .run();
+    });
+  }
+
+  onProgress(85);
+
+  const hookFiles = readdirSync(hookDir).filter((f) => f.endsWith(".jpg")).sort().slice(0, MAX_HOOK);
+  const spreadFiles = readdirSync(spreadDir).filter((f) => f.endsWith(".jpg")).sort().slice(0, MAX_SPREAD);
+
+  const frames: string[] = [];
+  for (const f of hookFiles) frames.push(readFileSync(join(hookDir, f)).toString("base64"));
+  for (const f of spreadFiles) frames.push(readFileSync(join(spreadDir, f)).toString("base64"));
+
+  return { frames, hookCount: hookFiles.length };
 }
 
-// Extract ~30s of audio as mp3 for transcription
+// Extract full audio as mp3 for transcription (no time limit — full video for accurate caption analysis)
 function extractAudio(filePath: string, audioPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     ffmpeg(filePath)
-      .outputOptions(["-t", "30", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k"])
+      .outputOptions(["-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k"])
       .output(audioPath)
       .on("end", () => resolve())
       .on("error", () => {
@@ -204,13 +241,13 @@ async function processVideoJob(
   try {
     mkdirSync(frameDir, { recursive: true });
 
-    // Step 1: Extract frames
+    // Step 1: Extract frames (hook-first strategy)
     emitProgress(job, "extracting", 5, "Extracting frames…");
-    const frames = await extractFrames(filePath, durationSeconds, frameDir, (pct) => {
+    const { frames, hookCount } = await extractFrames(filePath, durationSeconds, frameDir, (pct) => {
       emitProgress(job, "extracting", 5 + Math.round(pct * 0.35), `Extracting frames… ${pct}%`);
     });
 
-    // Step 2: Extract + transcribe audio
+    // Step 2: Extract + transcribe audio (full video — no time limit)
     emitProgress(job, "transcribing", 42, "Transcribing audio…");
     let transcript = "";
     const audioPath = join(tmpdir(), `cliprank-audio-${jobId}.mp3`);
@@ -237,15 +274,21 @@ async function processVideoJob(
     // Step 3: AI scoring
     emitProgress(job, "scoring", 55, "Scoring virality…");
 
-    const selectedFrames = frames.slice(0, 20);
-    const imageContent = selectedFrames.map((frame) => ({
+    // First hookCount images = hook zone (first ~3.5s), remainder = body spread
+    const imageContent = frames.map((frame, i) => ({
       type: "image_url" as const,
-      image_url: { url: `data:image/jpeg;base64,${frame}`, detail: "low" as const },
+      image_url: {
+        url: `data:image/jpeg;base64,${frame}`,
+        // Use "high" detail for hook frames — visual hook score depends on them
+        detail: i < hookCount ? ("high" as const) : ("low" as const),
+      },
     }));
 
+    const hookNote = `FRAME LAYOUT: Images 1-${hookCount} are HOOK ZONE frames (first ~3.5s, high-res). Images ${hookCount + 1}-${frames.length} are BODY frames spread across the rest of the video. Base visualHookScore ONLY on the hook zone frames.`;
+
     const userMessage = transcript
-      ? `Video: "${filename}" (${durationSeconds}s, ${selectedFrames.length} frames)\n\nTranscript:\n${transcript}\n\nScore virality potential:`
-      : `Video: "${filename}" (${durationSeconds}s, ${selectedFrames.length} frames)\n\nNo audio transcript available.\n\nScore virality potential:`;
+      ? `Video: "${filename}" (${Math.round(durationSeconds)}s · ${hookCount} hook frames + ${frames.length - hookCount} body frames)\n\n${hookNote}\n\nTranscript (full video):\n${transcript}\n\nScore virality potential:`
+      : `Video: "${filename}" (${Math.round(durationSeconds)}s · ${hookCount} hook frames + ${frames.length - hookCount} body frames)\n\n${hookNote}\n\nNo audio transcript available.\n\nScore virality potential:`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -294,7 +337,7 @@ async function processVideoJob(
         : JSON.stringify(parsed.visualHeatmap || {}),
       isPremiumUnlocked: false,
       durationSeconds,
-      frameCount: selectedFrames.length,
+      frameCount: frames.length,
     };
 
     const [inserted] = await db.insert(analysesTable).values(analysis).returning();
