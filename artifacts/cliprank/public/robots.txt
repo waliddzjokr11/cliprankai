@@ -3,6 +3,7 @@ Allow: /
 Disallow: /app
 Disallow: /history
 Disallow: /auth
+Disallow: /admin
 Disallow: /api/
 
 Sitemap: https://cliprankai.com/sitemap.xml

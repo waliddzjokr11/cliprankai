@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, useClerk, useAuth } from "@clerk/react";
+import { ClerkProvider, useClerk, useAuth, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, useLocation, Redirect, Router as WouterRouter } from "wouter";
@@ -12,6 +12,12 @@ import HistoryPage from "@/pages/HistoryPage";
 import LearnMorePage from "@/pages/LearnMorePage";
 import PricingPage from "@/pages/PricingPage";
 import AuthPage from "@/pages/AuthPage";
+import AdminPage from "@/pages/AdminPage";
+import ContactPage from "@/pages/ContactPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import TermsPage from "@/pages/TermsPage";
+import CookiePolicyPage from "@/pages/CookiePolicyPage";
+import CookieBanner, { initAnalyticsIfConsented } from "@/components/CookieBanner";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -90,7 +96,6 @@ const clerkAppearance = {
   },
 };
 
-
 // Route guards — show content immediately while Clerk loads (better UX than Show)
 function HomeRoute() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -162,6 +167,11 @@ function ClerkProviderWithRoutes() {
             <Route path="/history" component={HistoryRoute} />
             <Route path="/learn-more" component={LearnMorePage} />
             <Route path="/pricing" component={PricingPage} />
+            <Route path="/contact" component={ContactPage} />
+            <Route path="/privacy" component={PrivacyPage} />
+            <Route path="/terms" component={TermsPage} />
+            <Route path="/cookies" component={CookiePolicyPage} />
+            <Route path="/admin" component={AdminPage} />
             <Route path="/auth/*?" component={AuthRoute} />
             {/* Legacy redirects — keep old URLs working */}
             <Route path="/sign-in/*?" component={AuthRoute} />
@@ -169,6 +179,7 @@ function ClerkProviderWithRoutes() {
             <Route component={NotFound} />
           </Switch>
           <Toaster />
+          <CookieBanner />
         </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>
@@ -176,7 +187,10 @@ function ClerkProviderWithRoutes() {
 }
 
 export default function App() {
-  useEffect(() => { document.documentElement.classList.add("dark"); }, []);
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+    initAnalyticsIfConsented();
+  }, []);
   return (
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />

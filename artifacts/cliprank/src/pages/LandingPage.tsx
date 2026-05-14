@@ -1,38 +1,61 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
-import { Zap, BarChart3, Film, Clock, ArrowRight, ChevronRight, Star } from "lucide-react";
+import { Zap, BarChart3, Film, Clock, ArrowRight, ChevronRight, Star, Menu, X } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useUser } from "@clerk/react";
+import RequestAccessModal from "@/components/RequestAccessModal";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function NavBar() {
   const [, nav] = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <header className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img src={`${basePath}/logo.svg`} className="w-7 h-7" alt="ClipRank" />
           <span className="font-semibold text-white tracking-tight">ClipRank</span>
         </div>
+
+        {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
           <button onClick={() => nav("/learn-more")} className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">Learn More</button>
           <button onClick={() => nav("/pricing")} className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">Pricing</button>
+          <button onClick={() => nav("/contact")} className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">Contact</button>
         </nav>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => nav("/auth")}
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => nav("/auth")}
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
-          >
-            Get started free
-          </button>
+
+        <div className="hidden md:flex items-center gap-3">
+          <button onClick={() => nav("/auth")} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Sign In</button>
+          <button onClick={() => nav("/auth")} className="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Get started free</button>
         </div>
+
+        {/* Mobile hamburger */}
+        <button className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors" onClick={() => setMenuOpen(v => !v)}>
+          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
       </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-4 flex flex-col gap-1">
+          {[
+            { label: "Learn More", path: "/learn-more" },
+            { label: "Pricing", path: "/pricing" },
+            { label: "Contact", path: "/contact" },
+          ].map(({ label, path }) => (
+            <button key={path} onClick={() => { nav(path); setMenuOpen(false); }} className="w-full text-left px-4 py-3 text-sm text-zinc-400 hover:text-white rounded-xl hover:bg-white/[0.05] transition-colors">
+              {label}
+            </button>
+          ))}
+          <div className="border-t border-white/[0.06] mt-2 pt-2 flex flex-col gap-2">
+            <button onClick={() => { nav("/auth"); setMenuOpen(false); }} className="w-full px-4 py-3 text-sm text-zinc-400 hover:text-white text-left rounded-xl hover:bg-white/[0.05] transition-colors">Sign In</button>
+            <button onClick={() => { nav("/auth"); setMenuOpen(false); }} className="w-full px-4 py-3 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Get started free</button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -63,14 +86,16 @@ const steps = [
 
 export default function LandingPage() {
   const [, nav] = useLocation();
-  usePageTitle("", "AI-powered video analysis for TikTok, Reels & Shorts. Get a calibrated virality score based on real algorithm signals — pacing, hook strength, captions, and more. Free to start.");
+  const { isSignedIn, isLoaded } = useUser();
+  const [requestOpen, setRequestOpen] = useState(false);
+  usePageTitle("", "AI-powered video analysis for TikTok, Reels & Shorts. Get a calibrated virality score based on real algorithm signals — pacing, hook strength, captions, and more.");
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
       <NavBar />
 
       {/* Hero */}
-      <section className="relative pt-40 pb-24 px-6 overflow-hidden">
+      <section className="relative pt-36 pb-20 px-4 sm:px-6 overflow-hidden">
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 70%)" }}
@@ -83,14 +108,14 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs text-zinc-400 mb-8"
           >
             <Star className="w-3 h-3 text-indigo-400 fill-indigo-400" />
-            3 free credits on signup — no credit card needed
+            Buy credits to start — or request free access below
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6"
+            className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6"
           >
             Rank your video{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
@@ -102,7 +127,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           >
             ClipRank uses multimodal AI to score your pacing, visual hooks, and caption readability — giving you a creator-ready report card in seconds.
           </motion.p>
@@ -111,20 +136,23 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex items-center justify-center gap-4 flex-wrap"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
           >
             <button
               onClick={() => nav("/auth")}
-              className="group flex items-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all"
+              className="group w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all"
             >
-              Start analyzing free
+              Start analyzing
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </button>
             <button
-              onClick={() => nav("/learn-more")}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 font-medium transition-colors"
+              onClick={() => {
+                if (isLoaded && isSignedIn) setRequestOpen(true);
+                else nav("/auth");
+              }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 font-medium transition-colors"
             >
-              See how it works
+              Request free access
               <ChevronRight className="w-4 h-4" />
             </button>
           </motion.div>
@@ -135,26 +163,26 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="max-w-xl mx-auto mt-20 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6"
+          className="max-w-sm sm:max-w-xl mx-auto mt-16 sm:mt-20 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6"
         >
           <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="font-semibold text-white">my_reel_final_v2.mp4</p>
+            <div className="min-w-0 flex-1 mr-4">
+              <p className="font-semibold text-white truncate">my_reel_final_v2.mp4</p>
               <p className="text-xs text-zinc-500 mt-0.5">58s · 19 frames analyzed</p>
             </div>
-            <div className="text-center">
+            <div className="text-center flex-shrink-0">
               <p className="text-4xl font-bold text-indigo-400">84</p>
               <p className="text-xs text-zinc-500">Overall</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
             {[
               { label: "Pacing", v: 87, color: "#34d399" },
               { label: "Visual Hook", v: 76, color: "#6366f1" },
               { label: "Captions", v: 91, color: "#a78bfa" },
             ].map((m) => (
               <div key={m.label} className="text-center">
-                <p className="text-2xl font-bold" style={{ color: m.color }}>{m.v}</p>
+                <p className="text-xl sm:text-2xl font-bold" style={{ color: m.color }}>{m.v}</p>
                 <p className="text-xs text-zinc-500 mt-1">{m.label}</p>
               </div>
             ))}
@@ -163,13 +191,13 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="py-24 px-6 border-t border-white/[0.06]">
+      <section className="py-20 sm:py-24 px-4 sm:px-6 border-t border-white/[0.06]">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12 sm:mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-3">How it works</p>
-            <h2 className="text-4xl font-bold">Three steps to better content</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">Three steps to better content</h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-3 gap-8 sm:gap-8">
             {steps.map((s) => (
               <div key={s.n} className="relative">
                 <p className="text-5xl font-bold text-white/[0.06] font-mono mb-4">{s.n}</p>
@@ -182,15 +210,15 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6 border-t border-white/[0.06]">
+      <section className="py-20 sm:py-24 px-4 sm:px-6 border-t border-white/[0.06]">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12 sm:mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-3">Features</p>
-            <h2 className="text-4xl font-bold">Built for serious creators</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">Built for serious creators</h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
             {features.map((f) => (
-              <div key={f.title} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-indigo-500/30 hover:bg-indigo-500/[0.04] transition-colors">
+              <div key={f.title} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 sm:p-6 hover:border-indigo-500/30 hover:bg-indigo-500/[0.04] transition-colors">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center mb-4">
                   {f.icon}
                 </div>
@@ -203,37 +231,66 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6 border-t border-white/[0.06]">
+      <section className="py-20 sm:py-24 px-4 sm:px-6 border-t border-white/[0.06]">
         <div className="max-w-2xl mx-auto text-center">
           <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-6">
             <Zap className="w-7 h-7 text-indigo-400" />
           </div>
-          <h2 className="text-4xl font-bold mb-4">Ready to rank your content?</h2>
-          <p className="text-zinc-400 mb-8">Sign up free and get 3 credits instantly. One credit covers 10 seconds of video.</p>
-          <button
-            onClick={() => nav("/auth")}
-            className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-lg transition-all"
-          >
-            Get started — it's free
-          </button>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to rank your content?</h2>
+          <p className="text-zinc-400 mb-8 px-2">Buy a credit pack and start analyzing instantly. Or request free access if you're a student or small creator.</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => nav("/pricing")}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base sm:text-lg transition-all"
+            >
+              View pricing
+            </button>
+            <button
+              onClick={() => {
+                if (isLoaded && isSignedIn) setRequestOpen(true);
+                else nav("/auth");
+              }}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 font-semibold text-base sm:text-lg transition-colors"
+            >
+              Request free access
+            </button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src={`${basePath}/logo.svg`} className="w-5 h-5" alt="" />
-            <span className="text-sm text-zinc-600 font-medium">ClipRank</span>
+      <footer className="border-t border-white/[0.06] py-10 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-8">
+            <div className="flex items-center gap-2">
+              <img src={`${basePath}/logo.svg`} className="w-5 h-5" alt="" />
+              <span className="text-sm text-zinc-500 font-medium">ClipRank AI</span>
+            </div>
+            <div className="flex flex-wrap justify-center sm:justify-start gap-x-6 gap-y-2 text-xs text-zinc-600">
+              <button onClick={() => nav("/learn-more")} className="hover:text-zinc-400 transition-colors">Learn More</button>
+              <button onClick={() => nav("/pricing")} className="hover:text-zinc-400 transition-colors">Pricing</button>
+              <button onClick={() => nav("/contact")} className="hover:text-zinc-400 transition-colors">Contact</button>
+              <button onClick={() => nav("/privacy")} className="hover:text-zinc-400 transition-colors">Privacy Policy</button>
+              <button onClick={() => nav("/terms")} className="hover:text-zinc-400 transition-colors">Terms of Service</button>
+              <button onClick={() => nav("/cookies")} className="hover:text-zinc-400 transition-colors">Cookie Policy</button>
+            </div>
           </div>
-          <div className="flex items-center gap-6 text-xs text-zinc-600">
-            <button onClick={() => nav("/learn-more")} className="hover:text-zinc-400 transition-colors">Learn More</button>
-            <button onClick={() => nav("/pricing")} className="hover:text-zinc-400 transition-colors">Pricing</button>
-            <button onClick={() => nav("/auth")} className="hover:text-zinc-400 transition-colors">Sign In</button>
+          <div className="mt-6 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-xs text-zinc-700">© 2026 ClipRank AI. All rights reserved.</p>
+            <button
+              onClick={() => {
+                localStorage.removeItem("cliprank_cookie_consent");
+                window.location.reload();
+              }}
+              className="text-xs text-zinc-700 hover:text-zinc-500 transition-colors"
+            >
+              Cookie settings
+            </button>
           </div>
-          <p className="text-xs text-zinc-700">© 2026 ClipRank. All rights reserved.</p>
         </div>
       </footer>
+
+      <RequestAccessModal open={requestOpen} onClose={() => setRequestOpen(false)} />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { InitUserBody } from "@workspace/api-zod";
 
 const router = Router();
 
-const TRIAL_CREDITS = 3;
+const TRIAL_CREDITS = 0;
 
 // ─── TESTING FLAG ────────────────────────────────────────────────────────────
 // When TESTING_UNLIMITED_CREDITS=true, all users appear to have 9999 credits
