@@ -88,24 +88,25 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-// GET /api/videos — list analyses for a specific user
+// GET /api/videos — list analyses for a specific user (userId required)
 router.get("/", async (req, res) => {
   const userId = req.query.userId as string | undefined;
+  if (!userId) {
+    // Never leak other users' data — require userId
+    return res.json([]);
+  }
   try {
-    const query = db
+    const analyses = await db
       .select()
       .from(analysesTable)
+      .where(eq(analysesTable.userId, userId))
       .orderBy(desc(analysesTable.createdAt))
       .limit(50);
 
-    const analyses = userId
-      ? await query.where(eq(analysesTable.userId, userId))
-      : await query;
-
-    res.json(analyses.map(serializeAnalysis));
+    return res.json(analyses.map(serializeAnalysis));
   } catch (err) {
     req.log.error({ err }, "Failed to list analyses");
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -350,12 +351,15 @@ Analyze these ${selectedFrames.length} frames — NOTE: no captions in transcrip
   }
 });
 
-// GET /api/videos/:id
+// GET /api/videos/:id — only the owner may view their analysis
 router.get("/:id", async (req, res) => {
   const paramsResult = GetAnalysisParams.safeParse(req.params);
   if (!paramsResult.success) {
     return res.status(400).json({ error: "Invalid params" });
   }
+
+  // Caller must pass their userId so we can verify ownership
+  const requestingUserId = req.query.userId as string | undefined;
 
   try {
     const [analysis] = await db
@@ -366,6 +370,13 @@ router.get("/:id", async (req, res) => {
 
     if (!analysis) {
       return res.status(404).json({ error: "Analysis not found" });
+    }
+
+    // Ownership check — admin can always view
+    if (requestingUserId && analysis.userId && !ADMIN_USER_IDS.has(requestingUserId)) {
+      if (analysis.userId !== requestingUserId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
     }
 
     return res.json(serializeAnalysis(analysis));

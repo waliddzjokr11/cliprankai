@@ -35,6 +35,7 @@ import {
   CheckCircle2,
   XCircle,
   LogOut,
+  Lock,
 } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 
@@ -486,348 +487,315 @@ export default function AnalyzerPage({ initialAnalysisId }: { initialAnalysisId?
                 </motion.div>
               </div>
 
-              {/* Summary */}
+              {/* ─── Everything below the scores is premium-gated ─── */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="glass-card p-5"
               >
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Summary
-                </h3>
-                <p className="text-foreground leading-relaxed text-sm">{analysis.summary}</p>
-              </motion.div>
-
-              {/* Feedback Cards */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-3"
-              >
-                {[
-                  { label: "Hook (0-3s)", feedback: analysis.visualHookFeedback, score: analysis.visualHookScore },
-                  { label: "Pacing", feedback: analysis.pacingFeedback, score: analysis.pacingScore },
-                  { label: "Captions", feedback: analysis.captionFeedback, score: analysis.captionReadabilityScore },
-                ].map(({ label, feedback, score }) => (
-                  <div key={label} className="glass-card p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {label}
-                      </span>
-                      <span
-                        className={`text-sm font-mono font-bold ${
-                          score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-rose-400"
-                        }`}
-                      >
-                        {Math.round(score)}/100
-                      </span>
+                {analysis.isPremiumUnlocked ? (
+                  /* ── UNLOCKED: show all detail sections ── */
+                  <div className="space-y-4">
+                    {/* Summary */}
+                    <div className="glass-card p-5">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Summary</h3>
+                      <p className="text-foreground leading-relaxed text-sm">{analysis.summary}</p>
                     </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">{feedback}</p>
-                  </div>
-                ))}
-              </motion.div>
 
-              {/* Retention Risk */}
-              {analysis.retentionRisk && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="glass-card overflow-hidden"
-                >
-                  <button
-                    className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                    onClick={() => setRetentionOpen(!retentionOpen)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-semibold">Retention Risk Analysis</span>
-                      <span className="text-xs text-zinc-500">Where viewers drop off</span>
-                    </div>
-                    {retentionOpen
-                      ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                      : <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    }
-                  </button>
-                  <AnimatePresence>
-                    {retentionOpen && (() => {
-                      const risk = parseJson<RetentionRisk>(analysis.retentionRisk, {});
-                      return (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden border-t border-border/50"
-                        >
-                          <div className="px-5 pb-5 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            {[
-                              { label: "Opening (0-3s)", text: risk.opening, icon: "🪝" },
-                              { label: "Mid-video", text: risk.midVideo, icon: "📉" },
-                              { label: "Ending", text: risk.ending, icon: "🔚" },
-                            ].map(({ label, text, icon }) => (
-                              <div key={label} className="space-y-1.5">
-                                <p className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                                  <span>{icon}</span>{label}
-                                </p>
-                                <p className="text-xs text-zinc-500 leading-relaxed">
-                                  {text || "No specific risk identified."}
-                                </p>
-                              </div>
-                            ))}
+                    {/* Feedback Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { label: "Hook (0-3s)", feedback: analysis.visualHookFeedback, score: analysis.visualHookScore },
+                        { label: "Pacing", feedback: analysis.pacingFeedback, score: analysis.pacingScore },
+                        { label: "Captions", feedback: analysis.captionFeedback, score: analysis.captionReadabilityScore },
+                      ].map(({ label, feedback, score }) => (
+                        <div key={label} className="glass-card p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+                            <span className={`text-sm font-mono font-bold ${score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-rose-400"}`}>
+                              {Math.round(score)}/100
+                            </span>
                           </div>
-                        </motion.div>
-                      );
-                    })()}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-
-              {/* Competitor / Viral Pattern Insights */}
-              {analysis.competitorInsights && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 }}
-                  className="glass-card overflow-hidden"
-                >
-                  <button
-                    className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                    onClick={() => setCompetitorOpen(!competitorOpen)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-semibold">
-                        Viral Pattern Analysis
-                      </span>
-                      {analysis.niche && (
-                        <span className="text-xs text-zinc-500">
-                          Top {analysis.niche} creators
-                        </span>
-                      )}
+                          <p className="text-xs text-foreground/80 leading-relaxed">{feedback}</p>
+                        </div>
+                      ))}
                     </div>
-                    {competitorOpen
-                      ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                      : <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    }
-                  </button>
-                  <AnimatePresence>
-                    {competitorOpen && (() => {
-                      const insights = parseJson<CompetitorInsights>(analysis.competitorInsights, {});
-                      return (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden border-t border-border/50"
+
+                    {/* Retention Risk */}
+                    {analysis.retentionRisk && (
+                      <div className="glass-card overflow-hidden">
+                        <button
+                          className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                          onClick={() => setRetentionOpen(!retentionOpen)}
                         >
-                          <div className="px-5 pb-5 pt-4 space-y-5">
-                            {/* Top patterns */}
-                            {insights.topPatterns && insights.topPatterns.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
-                                  What viral {analysis.niche || "niche"} videos consistently do
-                                </p>
-                                <div className="space-y-2">
-                                  {insights.topPatterns.map((pattern, i) => (
-                                    <div key={i} className="flex items-start gap-2.5">
-                                      <div className="flex-shrink-0 mt-0.5">
-                                        <div className="w-4 h-4 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                                          <span className="text-[9px] font-bold text-purple-400">{i + 1}</span>
-                                        </div>
-                                      </div>
-                                      <p className="text-sm text-zinc-300 leading-relaxed">{pattern}</p>
+                          <div className="flex items-center gap-2">
+                            <Target className="w-4 h-4 text-amber-400" />
+                            <span className="text-sm font-semibold">Retention Risk Analysis</span>
+                            <span className="text-xs text-zinc-500">Where viewers drop off</span>
+                          </div>
+                          {retentionOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                        <AnimatePresence>
+                          {retentionOpen && (() => {
+                            const risk = parseJson<RetentionRisk>(analysis.retentionRisk, {});
+                            return (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="overflow-hidden border-t border-border/50"
+                              >
+                                <div className="px-5 pb-5 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                  {[
+                                    { label: "Opening (0-3s)", text: risk.opening, icon: "🪝" },
+                                    { label: "Mid-video", text: risk.midVideo, icon: "📉" },
+                                    { label: "Ending", text: risk.ending, icon: "🔚" },
+                                  ].map(({ label, text, icon }) => (
+                                    <div key={label} className="space-y-1.5">
+                                      <p className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5"><span>{icon}</span>{label}</p>
+                                      <p className="text-xs text-zinc-500 leading-relaxed">{text || "No specific risk identified."}</p>
                                     </div>
                                   ))}
                                 </div>
-                              </div>
-                            )}
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {/* Gap analysis */}
-                              {insights.gapAnalysis && (
-                                <div className="rounded-xl bg-rose-500/[0.07] border border-rose-500/20 p-4">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                                    <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider">
-                                      Your gaps
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-zinc-400 leading-relaxed">
-                                    {insights.gapAnalysis}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Winning formula */}
-                              {insights.winningFormula && (
-                                <div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 p-4">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                    <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                                      Winning formula
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-zinc-400 leading-relaxed">
-                                    {insights.winningFormula}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Niche examples */}
-                            {insights.nicheExamples && (
-                              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                                <ArrowRight className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-xs font-semibold text-zinc-500 mb-0.5">
-                                    Study these creators/videos
-                                  </p>
-                                  <p className="text-sm text-zinc-400 leading-relaxed">
-                                    {insights.nicheExamples}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })()}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-
-              {/* Trend Alignment */}
-              {(analysis.trendScore !== null && analysis.trendScore !== undefined) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.38 }}
-                  className="glass-card p-5"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-cyan-400" />
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Trend Alignment
-                      </h3>
-                      {analysis.niche && (
-                        <span className="text-xs text-zinc-500">· {analysis.niche}</span>
-                      )}
-                    </div>
-                    <span className={`text-sm font-mono font-bold ${
-                      analysis.trendScore >= 70 ? "text-emerald-400" :
-                      analysis.trendScore >= 40 ? "text-amber-400" : "text-rose-400"
-                    }`}>
-                      {Math.round(analysis.trendScore)}/100
-                    </span>
-                  </div>
-                  {/* Progress bar */}
-                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-3">
-                    <motion.div
-                      className={`h-full rounded-full ${
-                        analysis.trendScore >= 70 ? "bg-emerald-500" :
-                        analysis.trendScore >= 40 ? "bg-amber-500" : "bg-rose-500"
-                      }`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${analysis.trendScore}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                    />
-                  </div>
-                  {analysis.trendInsights && (
-                    <p className="text-xs text-foreground/80 leading-relaxed">{analysis.trendInsights}</p>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Transcript (collapsible) */}
-              {analysis.transcript && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="glass-card overflow-hidden"
-                >
-                  <button
-                    className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                    onClick={() => setTranscriptOpen(!transcriptOpen)}
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Transcript
-                    </span>
-                    {transcriptOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                  </button>
-                  <AnimatePresence>
-                    {transcriptOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden border-t border-border/50"
-                      >
-                        <p className="px-5 pb-5 pt-4 text-sm text-muted-foreground leading-relaxed font-mono whitespace-pre-wrap">
-                          {analysis.transcript}
-                        </p>
-                      </motion.div>
+                              </motion.div>
+                            );
+                          })()}
+                        </AnimatePresence>
+                      </div>
                     )}
-                  </AnimatePresence>
-                </motion.div>
-              )}
 
-              {/* Premium Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45 }}
-              >
-                {analysis.isPremiumUnlocked ? (
-                  <div className="space-y-4">
+                    {/* Viral Pattern Analysis */}
+                    {analysis.competitorInsights && (
+                      <div className="glass-card overflow-hidden">
+                        <button
+                          className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                          onClick={() => setCompetitorOpen(!competitorOpen)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-purple-400" />
+                            <span className="text-sm font-semibold">Viral Pattern Analysis</span>
+                            {analysis.niche && <span className="text-xs text-zinc-500">Top {analysis.niche} creators</span>}
+                          </div>
+                          {competitorOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                        <AnimatePresence>
+                          {competitorOpen && (() => {
+                            const insights = parseJson<CompetitorInsights>(analysis.competitorInsights, {});
+                            return (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="overflow-hidden border-t border-border/50"
+                              >
+                                <div className="px-5 pb-5 pt-4 space-y-5">
+                                  {insights.topPatterns && insights.topPatterns.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+                                        What viral {analysis.niche || "niche"} videos consistently do
+                                      </p>
+                                      <div className="space-y-2">
+                                        {insights.topPatterns.map((pattern, i) => (
+                                          <div key={i} className="flex items-start gap-2.5">
+                                            <div className="flex-shrink-0 mt-0.5">
+                                              <div className="w-4 h-4 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                                                <span className="text-[9px] font-bold text-purple-400">{i + 1}</span>
+                                              </div>
+                                            </div>
+                                            <p className="text-sm text-zinc-300 leading-relaxed">{pattern}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {insights.gapAnalysis && (
+                                      <div className="rounded-xl bg-rose-500/[0.07] border border-rose-500/20 p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                                          <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider">Your gaps</span>
+                                        </div>
+                                        <p className="text-sm text-zinc-400 leading-relaxed">{insights.gapAnalysis}</p>
+                                      </div>
+                                    )}
+                                    {insights.winningFormula && (
+                                      <div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Winning formula</span>
+                                        </div>
+                                        <p className="text-sm text-zinc-400 leading-relaxed">{insights.winningFormula}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {insights.nicheExamples && (
+                                    <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                                      <ArrowRight className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
+                                      <div>
+                                        <p className="text-xs font-semibold text-zinc-500 mb-0.5">Study these creators/videos</p>
+                                        <p className="text-sm text-zinc-400 leading-relaxed">{insights.nicheExamples}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })()}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* Trend Alignment */}
+                    {analysis.trendScore !== null && analysis.trendScore !== undefined && (
+                      <div className="glass-card p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-cyan-400" />
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trend Alignment</h3>
+                            {analysis.niche && <span className="text-xs text-zinc-500">· {analysis.niche}</span>}
+                          </div>
+                          <span className={`text-sm font-mono font-bold ${analysis.trendScore >= 70 ? "text-emerald-400" : analysis.trendScore >= 40 ? "text-amber-400" : "text-rose-400"}`}>
+                            {Math.round(analysis.trendScore)}/100
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-3">
+                          <motion.div
+                            className={`h-full rounded-full ${analysis.trendScore >= 70 ? "bg-emerald-500" : analysis.trendScore >= 40 ? "bg-amber-500" : "bg-rose-500"}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${analysis.trendScore}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                          />
+                        </div>
+                        {analysis.trendInsights && <p className="text-xs text-foreground/80 leading-relaxed">{analysis.trendInsights}</p>}
+                      </div>
+                    )}
+
+                    {/* Transcript */}
+                    {analysis.transcript && (
+                      <div className="glass-card overflow-hidden">
+                        <button
+                          className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                          onClick={() => setTranscriptOpen(!transcriptOpen)}
+                        >
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transcript</span>
+                          {transcriptOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                        <AnimatePresence>
+                          {transcriptOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.25 }}
+                              className="overflow-hidden border-t border-border/50"
+                            >
+                              <p className="px-5 pb-5 pt-4 text-sm text-muted-foreground leading-relaxed font-mono whitespace-pre-wrap">
+                                {analysis.transcript}
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* Professional Advice + Heatmap */}
                     {analysis.professionalAdvice && (
                       <div className="glass-card-bright p-6">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-2 h-2 rounded-full bg-primary" />
-                          <h3 className="text-xs font-semibold uppercase tracking-wider">
-                            Professional Editing Advice
-                          </h3>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider">Professional Editing Advice</h3>
                         </div>
-                        <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap text-sm">
-                          {analysis.professionalAdvice}
-                        </p>
+                        <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap text-sm">{analysis.professionalAdvice}</p>
                       </div>
                     )}
                     {analysis.visualHeatmap && (
                       <div className="glass-card-bright p-6">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                          <h3 className="text-xs font-semibold uppercase tracking-wider">
-                            Visual Attention Heatmap
-                          </h3>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider">Visual Attention Heatmap</h3>
                         </div>
-                        <p className="text-foreground/80 text-sm leading-relaxed font-mono whitespace-pre-wrap">
-                          {analysis.visualHeatmap}
-                        </p>
+                        <p className="text-foreground/80 text-sm leading-relaxed font-mono whitespace-pre-wrap">{analysis.visualHeatmap}</p>
                       </div>
                     )}
                   </div>
                 ) : (
+                  /* ── LOCKED: blurred preview + unlock CTA ── */
                   <div className="relative rounded-2xl overflow-hidden">
-                    <div className="blur-sm pointer-events-none select-none p-6 space-y-3 glass-card">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-3 bg-white/10 rounded" style={{ width: `${70 + (i % 3) * 10}%` }} />
-                      ))}
+                    {/* Blurred content preview — gives a realistic peek of what's inside */}
+                    <div className="pointer-events-none select-none space-y-4" style={{ filter: "blur(6px)", opacity: 0.55 }}>
+                      {/* Fake summary */}
+                      <div className="glass-card p-5">
+                        <div className="h-2.5 w-16 bg-white/20 rounded mb-3" />
+                        <div className="space-y-2">
+                          <div className="h-2.5 bg-white/10 rounded w-full" />
+                          <div className="h-2.5 bg-white/10 rounded w-[92%]" />
+                          <div className="h-2.5 bg-white/10 rounded w-[85%]" />
+                          <div className="h-2.5 bg-white/10 rounded w-[78%]" />
+                        </div>
+                      </div>
+                      {/* Fake feedback cards */}
+                      <div className="grid grid-cols-3 gap-3">
+                        {["Hook (0-3s)", "Pacing", "Captions"].map((label) => (
+                          <div key={label} className="glass-card p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="h-2 w-12 bg-white/20 rounded" />
+                              <div className="h-2.5 w-8 bg-white/20 rounded" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="h-2 bg-white/10 rounded w-full" />
+                              <div className="h-2 bg-white/10 rounded w-[85%]" />
+                              <div className="h-2 bg-white/10 rounded w-[70%]" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Fake retention risk section */}
+                      <div className="glass-card px-5 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded bg-amber-500/30" />
+                          <div className="h-2.5 w-32 bg-white/15 rounded" />
+                          <div className="h-2 w-24 bg-white/10 rounded" />
+                        </div>
+                        <div className="w-4 h-4 rounded bg-white/10" />
+                      </div>
+                      {/* Fake viral patterns section */}
+                      <div className="glass-card px-5 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded bg-purple-500/30" />
+                          <div className="h-2.5 w-36 bg-white/15 rounded" />
+                          <div className="h-2 w-20 bg-white/10 rounded" />
+                        </div>
+                        <div className="w-4 h-4 rounded bg-white/10" />
+                      </div>
+                      {/* Fake trend */}
+                      <div className="glass-card p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="h-2.5 w-24 bg-white/15 rounded" />
+                          <div className="h-2.5 w-10 bg-white/20 rounded" />
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/[0.06]">
+                          <div className="h-full w-[52%] rounded-full bg-amber-500/40" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
-                      <div className="glass-card-bright rounded-2xl px-8 py-7 flex flex-col items-center gap-4 w-full max-w-sm">
-                        <h3 className="text-base font-semibold text-center">
-                          Unlock Professional Advice
-                        </h3>
-                        <p className="text-sm text-muted-foreground text-center">
-                          Detailed editing notes, frame-by-frame attention heatmap, and platform-specific posting strategy.
-                        </p>
+
+                    {/* Gradient fade at bottom so it blends */}
+                    <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent" />
+
+                    {/* Unlock CTA — centred on top of blur */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center px-6 py-10">
+                      <div className="glass-card-bright rounded-2xl px-6 sm:px-8 py-7 flex flex-col items-center gap-4 w-full max-w-sm shadow-2xl border border-white/10">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
+                          <Lock className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <div className="text-center">
+                          <h3 className="text-base font-semibold mb-1">Unlock full analysis</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            Get the complete breakdown — feedback per dimension, retention risk, viral pattern analysis, transcript, and professional editing advice.
+                          </p>
+                        </div>
                         <PaypalButton analysisId={analysis.id} />
                       </div>
                     </div>
