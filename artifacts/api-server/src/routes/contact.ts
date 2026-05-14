@@ -35,10 +35,10 @@ router.post("/", async (req, res) => {
       message: message.trim(),
     });
     req.log.info({ email }, "Contact message received");
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to save contact message");
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

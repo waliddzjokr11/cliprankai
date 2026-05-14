@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, userCreditsTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { db, userCreditsTable, analysesTable } from "@workspace/db";
+import { eq, desc, sql, count, avg } from "drizzle-orm";
 import { pgTable, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 
@@ -43,6 +43,59 @@ function adminOnly(req: any, res: any, next: any) {
   next();
 }
 
+// ─── Dashboard Stats ──────────────────────────────────────────────────────────
+
+// GET /api/admin/stats?userId=...
+router.get("/stats", adminOnly, async (req, res) => {
+  try {
+    const [analysisStats] = await db.select({
+      total: count(analysesTable.id),
+      avgScore: avg(analysesTable.overallScore),
+      premiumUnlocks: sql<number>`SUM(CASE WHEN ${analysesTable.isPremiumUnlocked} THEN 1 ELSE 0 END)`,
+    }).from(analysesTable);
+
+    const [userStats] = await db.select({
+      total: count(userCreditsTable.userId),
+      totalCredits: sql<number>`SUM(${userCreditsTable.credits})`,
+    }).from(userCreditsTable);
+
+    const [pendingCount] = await db.select({
+      cnt: count(accessRequestsTable.id),
+    }).from(accessRequestsTable).where(eq(accessRequestsTable.status, "pending"));
+
+    const [unreadCount] = await db.select({
+      cnt: count(contactMessagesTable.id),
+    }).from(contactMessagesTable).where(eq(contactMessagesTable.read, false));
+
+    const recentAnalyses = await db.select({
+      id: analysesTable.id,
+      filename: analysesTable.filename,
+      overallScore: analysesTable.overallScore,
+      userId: analysesTable.userId,
+      niche: analysesTable.niche,
+      isPremiumUnlocked: analysesTable.isPremiumUnlocked,
+      createdAt: analysesTable.createdAt,
+    }).from(analysesTable).orderBy(desc(analysesTable.createdAt)).limit(10);
+
+    res.json({
+      totalAnalyses: Number(analysisStats?.total ?? 0),
+      avgScore: Number(analysisStats?.avgScore ?? 0),
+      premiumUnlocks: Number(analysisStats?.premiumUnlocks ?? 0),
+      totalUsers: Number(userStats?.total ?? 0),
+      totalCreditsInSystem: Number(userStats?.totalCredits ?? 0),
+      pendingRequests: Number(pendingCount?.cnt ?? 0),
+      unreadMessages: Number(unreadCount?.cnt ?? 0),
+      recentAnalyses: recentAnalyses.map(a => ({
+        ...a,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get admin stats");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ─── Access Requests ───────────────────────────────────────────────────────────
 
 // GET /api/admin/requests?userId=...
@@ -81,10 +134,10 @@ router.post("/requests/:id/approve", adminOnly, async (req, res) => {
     }
 
     req.log.info({ requestId: id, userId: request.userId, credits }, "Access request approved");
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to approve request");
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -125,10 +178,10 @@ router.put("/users/:targetUserId/credits", adminOnly, async (req, res) => {
     await db.update(userCreditsTable)
       .set({ credits, updatedAt: new Date() })
       .where(eq(userCreditsTable.userId, targetUserId));
-    res.json({ success: true, userId: targetUserId, credits });
+    return res.json({ success: true, userId: targetUserId, credits });
   } catch (err) {
     req.log.error({ err }, "Failed to update credits");
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

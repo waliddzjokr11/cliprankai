@@ -158,35 +158,45 @@ export default function LandingPage() {
           </motion.div>
         </div>
 
-        {/* Mock score card */}
+        {/* Product preview — animated UI teaser, no fake data */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="max-w-sm sm:max-w-xl mx-auto mt-16 sm:mt-20 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6"
+          className="max-w-sm sm:max-w-xl mx-auto mt-16 sm:mt-20"
         >
-          <div className="flex items-center justify-between mb-5">
-            <div className="min-w-0 flex-1 mr-4">
-              <p className="font-semibold text-white truncate">my_reel_final_v2.mp4</p>
-              <p className="text-xs text-zinc-500 mt-0.5">58s · 19 frames analyzed</p>
-            </div>
-            <div className="text-center flex-shrink-0">
-              <p className="text-4xl font-bold text-indigo-400">84</p>
-              <p className="text-xs text-zinc-500">Overall</p>
+          {/* Upload zone preview */}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl p-5 sm:p-6 mb-3">
+            <div className="border-2 border-dashed border-white/[0.10] rounded-xl px-6 py-8 flex flex-col items-center gap-3 group">
+              <div className="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center">
+                <Film className="w-6 h-6 text-indigo-400" />
+              </div>
+              <p className="text-sm font-medium text-zinc-300">Drop your video here</p>
+              <p className="text-xs text-zinc-600">MP4, MOV, AVI, WebM · 1 credit / 10s</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          {/* Score preview strip */}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl px-5 py-4 flex items-center justify-around gap-4">
             {[
-              { label: "Pacing", v: 87, color: "#34d399" },
-              { label: "Visual Hook", v: 76, color: "#6366f1" },
-              { label: "Captions", v: 91, color: "#a78bfa" },
-            ].map((m) => (
-              <div key={m.label} className="text-center">
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: m.color }}>{m.v}</p>
-                <p className="text-xs text-zinc-500 mt-1">{m.label}</p>
+              { label: "Overall", color: "text-indigo-400", bar: "bg-indigo-500" },
+              { label: "Hook", color: "text-emerald-400", bar: "bg-emerald-500" },
+              { label: "Pacing", color: "text-amber-400", bar: "bg-amber-500" },
+              { label: "Captions", color: "text-violet-400", bar: "bg-violet-500" },
+            ].map((m, i) => (
+              <div key={m.label} className="flex flex-col items-center gap-2 flex-1">
+                <div className="w-full h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${m.bar}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${[78, 65, 82, 71][i]}%` }}
+                    transition={{ duration: 1.2, delay: 0.8 + i * 0.12, ease: "easeOut" }}
+                  />
+                </div>
+                <span className="text-xs text-zinc-600">{m.label}</span>
               </div>
             ))}
           </div>
+          <p className="text-center text-xs text-zinc-700 mt-3">Sign in to see your real scores</p>
         </motion.div>
       </section>
 

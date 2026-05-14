@@ -44,10 +44,10 @@ router.post("/", async (req, res) => {
     });
 
     req.log.info({ userId, email }, "Access request submitted");
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to save access request");
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
