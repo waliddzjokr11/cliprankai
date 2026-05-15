@@ -32,6 +32,14 @@ export const analysesTable = pgTable("analyses", {
   // Trend analysis (v3)
   trendScore: real("trend_score"),
   trendInsights: text("trend_insights"),
+  // Deep analysis (v4)
+  hookFormula: text("hook_formula"),
+  emotionalTrigger: text("emotional_trigger"),
+  loopabilityScore: real("loopability_score"),
+  shareabilityScore: real("shareability_score"),
+  soundStrategy: text("sound_strategy"),
+  postingStrategy: text("posting_strategy"),
+  engagementPrediction: text("engagement_prediction"),
 });
 
 export const insertAnalysisSchema = createInsertSchema(analysesTable).omit({ createdAt: true });

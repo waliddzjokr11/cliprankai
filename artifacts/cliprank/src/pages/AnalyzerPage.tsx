@@ -456,6 +456,16 @@ export default function AnalyzerPage({ initialAnalysisId }: { initialAnalysisId?
                         {analysis.nichePlatform}
                       </span>
                     )}
+                    {analysis.hookFormula && analysis.hookFormula !== "NONE" && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                        {analysis.hookFormula}
+                      </span>
+                    )}
+                    {analysis.emotionalTrigger && (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">
+                        {analysis.emotionalTrigger.split(":")[0]}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button
@@ -487,12 +497,18 @@ export default function AnalyzerPage({ initialAnalysisId }: { initialAnalysisId?
                   transition={{ delay: 0.15 }}
                   className={`glass-card p-6 ${analysis.viralityScore !== null && analysis.viralityScore !== undefined ? "lg:col-span-3" : "lg:col-span-5"}`}
                 >
-                  <div className="flex items-center justify-around gap-4">
+                  <div className="flex items-center justify-around gap-2 flex-wrap">
                     <RadialProgress score={analysis.overallScore} label="Overall" size={100} strokeWidth={7} isMain />
                     <div className="w-px h-12 bg-white/10 hidden sm:block" />
-                    <RadialProgress score={analysis.visualHookScore} label="Hook" size={78} strokeWidth={6} />
-                    <RadialProgress score={analysis.pacingScore} label="Pacing" size={78} strokeWidth={6} />
-                    <RadialProgress score={analysis.captionReadabilityScore} label="Captions" size={78} strokeWidth={6} />
+                    <RadialProgress score={analysis.visualHookScore} label="Hook" size={72} strokeWidth={6} />
+                    <RadialProgress score={analysis.pacingScore} label="Pacing" size={72} strokeWidth={6} />
+                    <RadialProgress score={analysis.captionReadabilityScore} label="Captions" size={72} strokeWidth={6} />
+                    {analysis.loopabilityScore !== null && analysis.loopabilityScore !== undefined && (
+                      <RadialProgress score={analysis.loopabilityScore} label="Loopability" size={72} strokeWidth={6} />
+                    )}
+                    {analysis.shareabilityScore !== null && analysis.shareabilityScore !== undefined && (
+                      <RadialProgress score={analysis.shareabilityScore} label="Shareability" size={72} strokeWidth={6} />
+                    )}
                   </div>
                 </motion.div>
               </div>
@@ -679,6 +695,39 @@ export default function AnalyzerPage({ initialAnalysisId }: { initialAnalysisId?
                           />
                         </div>
                         {analysis.trendInsights && <p className="text-xs text-foreground/80 leading-relaxed">{analysis.trendInsights}</p>}
+                      </div>
+                    )}
+
+                    {/* Sound Strategy */}
+                    {analysis.soundStrategy && (
+                      <div className="glass-card p-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Layers className="w-4 h-4 text-sky-400" />
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sound Strategy</h3>
+                        </div>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{analysis.soundStrategy}</p>
+                      </div>
+                    )}
+
+                    {/* Posting Strategy */}
+                    {analysis.postingStrategy && (
+                      <div className="glass-card p-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-4 h-4 text-violet-400" />
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Posting Strategy</h3>
+                        </div>
+                        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{analysis.postingStrategy}</p>
+                      </div>
+                    )}
+
+                    {/* Engagement Prediction */}
+                    {analysis.engagementPrediction && (
+                      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="w-4 h-4 text-emerald-400" />
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Engagement Prediction</h3>
+                        </div>
+                        <p className="text-sm text-foreground/90 leading-relaxed font-medium">{analysis.engagementPrediction}</p>
                       </div>
                     )}
 

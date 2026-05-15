@@ -44,6 +44,13 @@ export const ListAnalysesResponseItem = zod.object({
   retentionRisk: zod.string().nullish(),
   trendScore: zod.number().nullish(),
   trendInsights: zod.string().nullish(),
+  hookFormula: zod.string().nullish(),
+  emotionalTrigger: zod.string().nullish(),
+  loopabilityScore: zod.number().nullish(),
+  shareabilityScore: zod.number().nullish(),
+  soundStrategy: zod.string().nullish(),
+  postingStrategy: zod.string().nullish(),
+  engagementPrediction: zod.string().nullish(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
 
@@ -88,6 +95,13 @@ export const AnalyzeVideoResponse = zod.object({
   retentionRisk: zod.string().nullish(),
   trendScore: zod.number().nullish(),
   trendInsights: zod.string().nullish(),
+  hookFormula: zod.string().nullish(),
+  emotionalTrigger: zod.string().nullish(),
+  loopabilityScore: zod.number().nullish(),
+  shareabilityScore: zod.number().nullish(),
+  soundStrategy: zod.string().nullish(),
+  postingStrategy: zod.string().nullish(),
+  engagementPrediction: zod.string().nullish(),
 });
 
 /**
@@ -123,6 +137,13 @@ export const GetAnalysisResponse = zod.object({
   retentionRisk: zod.string().nullish(),
   trendScore: zod.number().nullish(),
   trendInsights: zod.string().nullish(),
+  hookFormula: zod.string().nullish(),
+  emotionalTrigger: zod.string().nullish(),
+  loopabilityScore: zod.number().nullish(),
+  shareabilityScore: zod.number().nullish(),
+  soundStrategy: zod.string().nullish(),
+  postingStrategy: zod.string().nullish(),
+  engagementPrediction: zod.string().nullish(),
 });
 
 /**
@@ -162,6 +183,13 @@ export const UnlockPremiumResponse = zod.object({
   retentionRisk: zod.string().nullish(),
   trendScore: zod.number().nullish(),
   trendInsights: zod.string().nullish(),
+  hookFormula: zod.string().nullish(),
+  emotionalTrigger: zod.string().nullish(),
+  loopabilityScore: zod.number().nullish(),
+  shareabilityScore: zod.number().nullish(),
+  soundStrategy: zod.string().nullish(),
+  postingStrategy: zod.string().nullish(),
+  engagementPrediction: zod.string().nullish(),
 });
 
 /**

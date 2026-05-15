@@ -314,6 +314,27 @@ components:
         trendInsights:
           type: string
           nullable: true
+        hookFormula:
+          type: string
+          nullable: true
+        emotionalTrigger:
+          type: string
+          nullable: true
+        loopabilityScore:
+          type: number
+          nullable: true
+        shareabilityScore:
+          type: number
+          nullable: true
+        soundStrategy:
+          type: string
+          nullable: true
+        postingStrategy:
+          type: string
+          nullable: true
+        engagementPrediction:
+          type: string
+          nullable: true
       required:
         - id
         - filename

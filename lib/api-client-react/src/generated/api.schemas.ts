@@ -35,6 +35,13 @@ export interface VideoAnalysis {
   retentionRisk?: string | null;
   trendScore?: number | null;
   trendInsights?: string | null;
+  hookFormula?: string | null;
+  emotionalTrigger?: string | null;
+  loopabilityScore?: number | null;
+  shareabilityScore?: number | null;
+  soundStrategy?: string | null;
+  postingStrategy?: string | null;
+  engagementPrediction?: string | null;
 }
 
 export interface AnalyzeVideoBody {
