@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useGetStats, getGetStatsQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
-import { Film, Zap, Lock, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
+import { Film, Zap, Lock, BarChart3, TrendingUp, ArrowRight, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -52,12 +52,22 @@ export default function HistoryPage() {
             </div>
           </Link>
 
-          <Link href="/app">
-            <button className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
-              <Film className="w-4 h-4" />
-              New Analysis
-            </button>
-          </Link>
+          <div className="flex items-center gap-3">
+            {user?.id === "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk" && (
+              <Link href="/admin">
+                <button className="flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors">
+                  <Shield className="w-3.5 h-3.5" />
+                  Admin
+                </button>
+              </Link>
+            )}
+            <Link href="/app">
+              <button className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
+                <Film className="w-4 h-4" />
+                New Analysis
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 

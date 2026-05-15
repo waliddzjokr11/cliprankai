@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
-import { Zap, BarChart3, Film, Clock, ArrowRight, ChevronRight, Star, Menu, X } from "lucide-react";
+import { Zap, BarChart3, Film, Clock, ArrowRight, ChevronRight, Star, Menu, X, Shield } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useUser } from "@clerk/react";
 import RequestAccessModal from "@/components/RequestAccessModal";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+const ADMIN_USER_ID = "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+
 function NavBar() {
   const [, nav] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useUser();
+  const isAdmin = user?.id === ADMIN_USER_ID;
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
@@ -28,6 +32,15 @@ function NavBar() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => nav("/admin")}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/40 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Admin
+            </button>
+          )}
           <button onClick={() => nav("/auth")} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Sign In</button>
           <button onClick={() => nav("/auth")} className="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Get started free</button>
         </div>

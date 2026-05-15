@@ -36,6 +36,7 @@ import {
   XCircle,
   LogOut,
   Lock,
+  Shield,
 } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 
@@ -292,6 +293,15 @@ export default function AnalyzerPage({ initialAnalysisId }: { initialAnalysisId?
                 History
               </button>
             </Link>
+
+            {user?.id === "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk" && (
+              <Link href="/admin">
+                <button className="flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-md px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors hidden sm:flex">
+                  <Shield className="w-3 h-3" />
+                  Admin
+                </button>
+              </Link>
+            )}
 
             {user && (
               <button
