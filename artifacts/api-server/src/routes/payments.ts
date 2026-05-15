@@ -16,9 +16,9 @@ const PAYPAL_BASE_URL =
     : "https://api-m.sandbox.paypal.com";
 
 const CREDIT_TIERS: Record<number, string> = {
-  50: "9.99",
-  150: "19.99",
-  500: "49.99",
+  50: "14.99",
+  150: "34.99",
+  500: "79.99",
 };
 
 async function getPaypalAccessToken(): Promise<string> {
@@ -78,7 +78,7 @@ router.post("/create-order", async (req, res) => {
         intent: "CAPTURE",
         purchase_units: [{
           reference_id: analysisId,
-          amount: { currency_code: "USD", value: "10.00" },
+          amount: { currency_code: "USD", value: "19.99" },
           description: "ClipRank Premium Analysis Unlock",
         }],
         application_context: { brand_name: "ClipRank", user_action: "PAY_NOW" },

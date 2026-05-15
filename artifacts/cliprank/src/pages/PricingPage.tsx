@@ -28,7 +28,7 @@ const TIERS = [
   },
   {
     name: "Starter",
-    price: "$9.99",
+    price: "$14.99",
     credits: 50,
     coveredTime: "~8 minutes",
     icon: <Zap className="w-5 h-5" />,
@@ -40,7 +40,7 @@ const TIERS = [
     ctaStyle: "bg-indigo-600 hover:bg-indigo-500 text-white",
     features: [
       "50 credits",
-      "All three AI metrics",
+      "All four AI metrics",
       "Full score report",
       "Edge-cached results",
       "Credits never expire",
@@ -48,7 +48,7 @@ const TIERS = [
   },
   {
     name: "Creator",
-    price: "$19.99",
+    price: "$34.99",
     credits: 150,
     coveredTime: "~25 minutes",
     icon: <Star className="w-5 h-5" />,
@@ -61,7 +61,7 @@ const TIERS = [
     ctaStyle: "bg-violet-600 hover:bg-violet-500 text-white",
     features: [
       "150 credits",
-      "All three AI metrics",
+      "All four AI metrics",
       "Full score report",
       "Edge-cached results",
       "Credits never expire",
@@ -70,7 +70,7 @@ const TIERS = [
   },
   {
     name: "Pro",
-    price: "$49.99",
+    price: "$79.99",
     credits: 500,
     coveredTime: "~83 minutes",
     icon: <Crown className="w-5 h-5" />,
@@ -96,7 +96,7 @@ const FAQ = [
   { q: "What counts as one credit?", a: "One credit covers 10 seconds of video processed. A 60-second clip costs 6 credits. The credit cost is always shown before you confirm an analysis." },
   { q: "Do credits expire?", a: "Never. Credits stay in your account until you use them. There's no subscription or renewal." },
   { q: "What if I re-upload the same video?", a: "Identical videos are recognized by their fingerprint and returned from cache instantly — at zero credit cost." },
-  { q: "What's the $10 premium unlock?", a: "Each individual analysis can be unlocked for $10 to reveal professional editing advice, timestamp-level suggestions, and a visual attention heatmap for that specific video." },
+  { q: "What's the $19.99 premium unlock?", a: "Each individual analysis can be unlocked for $19.99 to reveal professional editing advice, timestamp-level suggestions, and a visual attention heatmap for that specific video." },
   { q: "Is there a free trial?", a: "Yes — every new account gets 3 trial credits on signup (no credit card required). That covers up to 30 seconds of video." },
 ];
 
@@ -201,9 +201,9 @@ export default function PricingPage() {
           <div className="divide-y divide-white/[0.06]">
             {[
               { plan: "Trial", credits: 3, price: "$0", cpc: "Free" },
-              { plan: "Starter", credits: 50, price: "$9.99", cpc: "$0.20 / credit" },
-              { plan: "Creator", credits: 150, price: "$19.99", cpc: "$0.13 / credit" },
-              { plan: "Pro", credits: 500, price: "$49.99", cpc: "$0.10 / credit" },
+              { plan: "Starter", credits: 50, price: "$14.99", cpc: "$0.30 / credit" },
+              { plan: "Creator", credits: 150, price: "$34.99", cpc: "$0.23 / credit" },
+              { plan: "Pro", credits: 500, price: "$79.99", cpc: "$0.16 / credit" },
             ].map((row) => (
               <div key={row.plan} className="px-6 py-3.5 flex items-center justify-between text-sm">
                 <span className="text-white font-medium">{row.plan}</span>
