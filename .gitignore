@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# pnpm lockfile (generated fresh on Railway Linux to avoid CRLF/config mismatch)
+pnpm-lock.yaml
