@@ -3,6 +3,11 @@ packages:
   - 'lib/*'
   - 'scripts'
 
+allowBuilds:
+  '@clerk/shared': set this to true or false
+  esbuild: set this to true or false
+  ffmpeg-static: set this to true or false
+
 autoInstallPeers: false
 
 catalog:
