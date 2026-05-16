@@ -9,7 +9,7 @@ import {
   Clock, CreditCard, AlertCircle,
 } from "lucide-react";
 
-const ADMIN_USER_ID = "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 type Tab = "dashboard" | "requests" | "users" | "messages" | "cms";
 
@@ -26,7 +26,9 @@ export default function AdminPage() {
     );
   }
 
-  if (!user || user.id !== ADMIN_USER_ID) {
+  const adminEmail = user.primaryEmailAddress?.emailAddress ?? "";
+
+  if (!user || !ADMIN_EMAIL || adminEmail !== ADMIN_EMAIL) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">
         <div className="text-center">
@@ -48,9 +50,9 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
       <header className="border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => nav("/app")} className="text-zinc-500 hover:text-white transition-colors">
               <ArrowLeft className="w-5 h-5" />
@@ -66,37 +68,37 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2 border-b border-white/[0.06] scrollbar-none">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+        <div className="flex gap-1.5 sm:gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 border-b border-white/[0.06] scrollbar-none scroll-pl-4">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 tab === id ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/[0.05]"
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
               <span className="whitespace-nowrap">{label}</span>
             </button>
           ))}
         </div>
 
-        {tab === "dashboard" && <DashboardTab adminId={user.id} onNavigate={setTab} />}
-        {tab === "requests" && <AccessRequestsTab adminId={user.id} />}
-        {tab === "users" && <UsersTab adminId={user.id} />}
-        {tab === "messages" && <MessagesTab adminId={user.id} />}
-        {tab === "cms" && <CmsTab adminId={user.id} />}
+        {tab === "dashboard" && <DashboardTab adminId={user.id} adminEmail={adminEmail} onNavigate={setTab} />}
+        {tab === "requests" && <AccessRequestsTab adminId={user.id} adminEmail={adminEmail} />}
+        {tab === "users" && <UsersTab adminId={user.id} adminEmail={adminEmail} />}
+        {tab === "messages" && <MessagesTab adminId={user.id} adminEmail={adminEmail} />}
+        {tab === "cms" && <CmsTab adminId={user.id} adminEmail={adminEmail} />}
       </div>
     </div>
   );
 }
 
-function DashboardTab({ adminId, onNavigate }: { adminId: string; onNavigate: (tab: Tab) => void }) {
+function DashboardTab({ adminId, adminEmail, onNavigate }: { adminId: string; adminEmail: string; onNavigate: (tab: Tab) => void }) {
   const qc = useQueryClient();
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/admin/stats", adminId],
-    queryFn: () => fetch(`/api/admin/stats?userId=${adminId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/admin/stats?userId=${adminId}&email=${encodeURIComponent(adminEmail)}`).then(r => r.json()),
     refetchInterval: 30_000,
   });
 
@@ -175,7 +177,7 @@ function DashboardTab({ adminId, onNavigate }: { adminId: string; onNavigate: (t
       </div>
 
       {/* Metric cards grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
         {metricCards.map(({ label, value, icon: Icon, color, bg, action }) => (
           <motion.div
             key={label}
@@ -275,11 +277,11 @@ function DashboardTab({ adminId, onNavigate }: { adminId: string; onNavigate: (t
   );
 }
 
-function AccessRequestsTab({ adminId }: { adminId: string }) {
+function AccessRequestsTab({ adminId, adminEmail }: { adminId: string; adminEmail: string }) {
   const qc = useQueryClient();
   const { data: requests, isLoading } = useQuery({
     queryKey: ["/api/admin/requests", adminId],
-    queryFn: () => fetch(`/api/admin/requests?userId=${adminId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/admin/requests?userId=${adminId}&email=${encodeURIComponent(adminEmail)}`).then(r => r.json()),
   });
 
   const approve = useMutation({
@@ -287,7 +289,7 @@ function AccessRequestsTab({ adminId }: { adminId: string }) {
       fetch(`/api/admin/requests/${id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: adminId, credits }),
+        body: JSON.stringify({ userId: adminId, email: adminEmail, credits }),
       }).then(r => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/requests", adminId] });
@@ -300,7 +302,7 @@ function AccessRequestsTab({ adminId }: { adminId: string }) {
       fetch(`/api/admin/requests/${id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: adminId }),
+        body: JSON.stringify({ userId: adminId, email: adminEmail }),
       }).then(r => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/requests", adminId] });
@@ -396,11 +398,11 @@ function AccessRequestsTab({ adminId }: { adminId: string }) {
   );
 }
 
-function UsersTab({ adminId }: { adminId: string }) {
+function UsersTab({ adminId, adminEmail }: { adminId: string; adminEmail: string }) {
   const qc = useQueryClient();
   const { data: users, isLoading } = useQuery({
     queryKey: ["/api/admin/users", adminId],
-    queryFn: () => fetch(`/api/admin/users?userId=${adminId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/admin/users?userId=${adminId}&email=${encodeURIComponent(adminEmail)}`).then(r => r.json()),
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -411,7 +413,7 @@ function UsersTab({ adminId }: { adminId: string }) {
       fetch(`/api/admin/users/${targetUserId}/credits`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: adminId, credits }),
+        body: JSON.stringify({ userId: adminId, email: adminEmail, credits }),
       }).then(r => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/users", adminId] });
@@ -496,11 +498,11 @@ function UsersTab({ adminId }: { adminId: string }) {
   );
 }
 
-function MessagesTab({ adminId }: { adminId: string }) {
+function MessagesTab({ adminId, adminEmail }: { adminId: string; adminEmail: string }) {
   const qc = useQueryClient();
   const { data: messages, isLoading } = useQuery({
     queryKey: ["/api/admin/messages", adminId],
-    queryFn: () => fetch(`/api/admin/messages?userId=${adminId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/admin/messages?userId=${adminId}&email=${encodeURIComponent(adminEmail)}`).then(r => r.json()),
   });
 
   const markRead = useMutation({
@@ -508,7 +510,7 @@ function MessagesTab({ adminId }: { adminId: string }) {
       fetch(`/api/admin/messages/${id}/read`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: adminId }),
+        body: JSON.stringify({ userId: adminId, email: adminEmail }),
       }).then(r => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/messages", adminId] });
@@ -586,7 +588,7 @@ function MessageCard({ msg, onMarkRead, isPending }: { msg: any; onMarkRead: () 
   );
 }
 
-function CmsTab({ adminId }: { adminId: string }) {
+function CmsTab({ adminId, adminEmail: _adminEmail }: { adminId: string; adminEmail: string }) {
   const qc = useQueryClient();
   const { data: config, isLoading } = useQuery({
     queryKey: ["/api/config"],
@@ -610,7 +612,7 @@ function CmsTab({ adminId }: { adminId: string }) {
     await fetch("/api/admin/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: adminId, ...edits }),
+      body: JSON.stringify({ userId: adminId, email: _adminEmail, ...edits }),
     });
     qc.invalidateQueries({ queryKey: ["/api/config"] });
     setEdits({});

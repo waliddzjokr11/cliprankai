@@ -8,13 +8,13 @@ import RequestAccessModal from "@/components/RequestAccessModal";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const ADMIN_USER_ID = "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 function NavBar() {
   const [, nav] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useUser();
-  const isAdmin = user?.id === ADMIN_USER_ID;
+  const isAdmin = ADMIN_EMAIL && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">

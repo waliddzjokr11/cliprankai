@@ -61,7 +61,8 @@ const CREDITS_PER_10S = 1;
 // To turn off: delete the env var and restart the API server.
 const TESTING_UNLIMITED_CREDITS = process.env.TESTING_UNLIMITED_CREDITS === "true";
 // Admin users always bypass credit checks
-const ADMIN_USER_IDS = new Set(["user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+const ADMIN_USER_IDS = new Set([process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 // ─────────────────────────────────────────────────────────────────────────────
 
 function creditsRequired(durationSeconds: number): number {
@@ -322,13 +323,14 @@ async function processVideoJob(
   filename: string,
   userId: string,
   fingerprint: string,
-  durationSeconds: number
+  durationSeconds: number,
+  adminEmail?: string
 ) {
   const job = getJob(jobId);
   if (!job) return;
 
   job.status = "running";
-  const isAdmin = ADMIN_USER_IDS.has(userId);
+  const isAdmin = ADMIN_USER_IDS.has(userId) || (ADMIN_EMAIL && adminEmail === ADMIN_EMAIL);
   const frameDir = join(tmpdir(), `cliprank-frames-${jobId}`);
 
   try {
@@ -465,6 +467,7 @@ async function processVideoJob(
 router.post("/upload", upload.single("video"), async (req, res) => {
   const file = req.file;
   const userId = String(req.body?.userId ?? "");
+  const email = String(req.body?.email ?? "");
   const filename = String(req.body?.filename ?? file?.originalname ?? "video.mp4");
 
   if (!file) {
@@ -497,7 +500,7 @@ router.post("/upload", upload.single("video"), async (req, res) => {
     }
 
     // 3. Credit check (skipped for admin users and during testing)
-    const isAdmin = ADMIN_USER_IDS.has(userId);
+    const isAdmin = ADMIN_USER_IDS.has(userId) || (ADMIN_EMAIL && email === ADMIN_EMAIL);
     const required = creditsRequired(durationSeconds);
     if (userId && !isAdmin && !TESTING_UNLIMITED_CREDITS) {
       const [userRow] = await db
@@ -523,7 +526,7 @@ router.post("/upload", upload.single("video"), async (req, res) => {
     createJob(jobId);
 
     // Fire-and-forget background processing
-    processVideoJob(jobId, file.path, filename, userId, fingerprint, durationSeconds).catch(() => {});
+    processVideoJob(jobId, file.path, filename, userId, fingerprint, durationSeconds, email || undefined).catch(() => {});
 
     return res.json({ jobId, durationSeconds });
   } catch (err: any) {

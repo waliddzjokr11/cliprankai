@@ -15,7 +15,8 @@ const router = Router();
 const CREDITS_PER_10S = 1;
 
 // Admin users always get premium unlocked and are never blocked by credits
-const ADMIN_USER_IDS = new Set(["user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+const ADMIN_USER_IDS = new Set([process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 // ─── TESTING FLAG ────────────────────────────────────────────────────────────
 // Set TESTING_UNLIMITED_CREDITS=true env var to bypass all credit checks.
@@ -136,7 +137,8 @@ router.post("/analyze", async (req, res) => {
   }
 
   // Credit check (skipped for admin users and during testing)
-  const isAdmin = ADMIN_USER_IDS.has(userId);
+  const adminEmail = ADMIN_EMAIL ? (req.body as any)?.email : undefined;
+  const isAdmin = ADMIN_USER_IDS.has(userId) || (ADMIN_EMAIL && adminEmail === ADMIN_EMAIL);
   const required = creditsRequired(durationSeconds);
   if (!isAdmin && !TESTING_UNLIMITED_CREDITS) {
     try {
@@ -501,7 +503,9 @@ router.get("/:id", async (req, res) => {
     }
 
     // Ownership check — admin can always view
-    if (requestingUserId && analysis.userId && !ADMIN_USER_IDS.has(requestingUserId)) {
+    const requestingEmail = ADMIN_EMAIL ? (req.query.email as string) : undefined;
+    const isAdminUser = ADMIN_USER_IDS.has(requestingUserId) || (ADMIN_EMAIL && requestingEmail === ADMIN_EMAIL);
+    if (requestingUserId && analysis.userId && !isAdminUser) {
       if (analysis.userId !== requestingUserId) {
         return res.status(403).json({ error: "Forbidden" });
       }

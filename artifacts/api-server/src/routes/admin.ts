@@ -6,7 +6,8 @@ import { randomUUID } from "crypto";
 
 const router = Router();
 
-const ADMIN_USER_ID = "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+const ADMIN_USER_ID = process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 // Inline table defs for tables not yet in shared lib schema
 const accessRequestsTable = pgTable("access_requests", {
@@ -39,7 +40,9 @@ const siteConfigTable = pgTable("site_config", {
 // Middleware: only admin — reads userId from query (GET) or body (POST/PUT)
 function adminOnly(req: any, res: any, next: any) {
   const userId = (req.query.userId as string) || (req.body?.userId as string);
-  if (userId !== ADMIN_USER_ID) return res.status(403).json({ error: "Forbidden" });
+  const email = (req.query.email as string) || (req.body?.email as string);
+  const isAdmin = userId === ADMIN_USER_ID || (ADMIN_EMAIL && email === ADMIN_EMAIL);
+  if (!isAdmin) return res.status(403).json({ error: "Forbidden" });
   next();
 }
 

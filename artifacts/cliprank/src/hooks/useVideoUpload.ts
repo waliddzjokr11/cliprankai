@@ -60,7 +60,7 @@ export function useVideoUpload() {
   }, []);
 
   const upload = useCallback(
-    (file: File, userId: string): Promise<UploadResult> => {
+    (file: File, userId: string, email?: string): Promise<UploadResult> => {
       return new Promise((resolve, reject) => {
         reset();
         setProgress({ step: "uploading", pct: 0, label: STEP_LABELS.uploading });
@@ -69,6 +69,7 @@ export function useVideoUpload() {
         formData.append("video", file);
         formData.append("userId", userId);
         formData.append("filename", file.name);
+        if (email) formData.append("email", email);
 
         const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 

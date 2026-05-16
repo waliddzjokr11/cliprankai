@@ -11,6 +11,8 @@ export default function HistoryPage() {
   usePageTitle("Analysis History");
   const { user } = useUser();
   const userId = user?.id;
+  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+  const isAdmin = ADMIN_EMAIL && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   const { data: analyses, isLoading } = useQuery({
     queryKey: ["/api/videos", userId],
@@ -53,7 +55,7 @@ export default function HistoryPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            {user?.id === "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk" && (
+            {isAdmin && (
               <Link href="/admin">
                 <button className="flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors">
                   <Shield className="w-3.5 h-3.5" />

@@ -43,6 +43,8 @@ externalPort = 3002
 
 [userenv.shared]
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_aHVtYW5lLXR1cmtleS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
+VITE_ADMIN_EMAIL = ""
+ADMIN_EMAIL = ""
 PAYPAL_ENV = "production"
 TESTING_UNLIMITED_CREDITS = "true"
 
