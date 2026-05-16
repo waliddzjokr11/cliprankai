@@ -1,0 +1,5 @@
+[build]
+command = "pnpm install"
+
+[deploy]
+startCommand = "pnpm run start"
