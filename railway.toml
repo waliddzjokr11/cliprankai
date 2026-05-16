@@ -1,5 +1,8 @@
 [build]
 command = "pnpm install"
 
+[runtime]
+nodeVersion = "20"
+
 [deploy]
 startCommand = "pnpm run start"
