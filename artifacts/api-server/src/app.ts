@@ -1,4 +1,6 @@
 import express, { type Express } from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -12,6 +14,11 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// Serve the built frontend in production
+const distDir = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.resolve(distDir, "..", "..", "cliprank", "dist", "public");
+app.use(express.static(frontendDist));
 
 app.use(
   pinoHttp({
@@ -49,5 +56,11 @@ app.use(
 );
 
 app.use("/api", router);
+
+// SPA fallback — serve index.html for any non-API route
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
+  res.sendFile(path.join(frontendDist, "index.html"));
+});
 
 export default app;
