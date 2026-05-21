@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm -r --if-present run build",
+    "build": "pnpm -r --filter !./artifacts/mockup-sandbox --if-present run build",
     "start": "node --enable-source-maps ./artifacts/api-server/dist/index.mjs",
     "db:push": "pnpm --filter @workspace/db run push",
     "postbuild": "pnpm run db:push",
