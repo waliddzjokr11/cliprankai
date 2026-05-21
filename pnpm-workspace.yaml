@@ -8,8 +8,6 @@ allowBuilds:
   esbuild: set this to true or false
   ffmpeg-static: set this to true or false
 
-autoInstallPeers: false
-
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
   '@replit/vite-plugin-dev-banner': ^0.1.1
@@ -33,17 +31,3 @@ catalog:
   vite: ^7.3.2
   wouter: ^3.3.5
   zod: ^3.25.76
-
-minimumReleaseAge: 1440
-
-minimumReleaseAgeExclude:
-  - '@replit/*'
-  - stripe-replit-sync
-
-onlyBuiltDependencies:
-  - '@swc/core'
-  - esbuild
-  - ffmpeg-static
-  - ffprobe-static
-  - msw
-  - unrs-resolver
