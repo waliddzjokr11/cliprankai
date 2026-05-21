@@ -1,0 +1,9 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+cmds = ["export COREPACK_ENABLE_STRICT=0 && corepack enable && corepack prepare pnpm@10.7.1 --activate"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.build]
+cmds = ["vite build"]
