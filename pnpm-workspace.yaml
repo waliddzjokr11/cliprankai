@@ -3,11 +3,6 @@ packages:
   - 'lib/*'
   - 'scripts'
 
-allowBuilds:
-  '@clerk/shared': set this to true or false
-  esbuild: set this to true or false
-  ffmpeg-static: set this to true or false
-
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
   '@replit/vite-plugin-dev-banner': ^0.1.1
