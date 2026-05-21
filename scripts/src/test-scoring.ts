@@ -12,7 +12,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 const API_BASE = "http://localhost:80/api";
-const ADMIN_USER_ID = "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+const ADMIN_USER_ID = process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
 const WORK_DIR = join(tmpdir(), "cliprank-scoring-test");
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

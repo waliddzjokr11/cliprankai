@@ -2,6 +2,7 @@
   "name": "@workspace/scripts",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@10.7.1",
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",

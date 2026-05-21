@@ -1,6 +1,7 @@
 {
     "name":  "@workspace/mockup-sandbox",
     "version":  "2.0.0",
+    "packageManager": "pnpm@10.7.1",
     "type":  "module",
     "private":  true,
     "scripts":  {

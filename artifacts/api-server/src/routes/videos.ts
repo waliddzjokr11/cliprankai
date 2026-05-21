@@ -15,7 +15,7 @@ const router = Router();
 const CREDITS_PER_10S = 1;
 
 // Admin users always get premium unlocked and are never blocked by credits
-const ADMIN_USER_IDS = new Set([process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+const ADMIN_USER_IDS = new Set(process.env.CLERK_ADMIN_USER_ID ? [process.env.CLERK_ADMIN_USER_ID] : []);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 // ─── TESTING FLAG ────────────────────────────────────────────────────────────

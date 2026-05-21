@@ -61,7 +61,7 @@ const CREDITS_PER_10S = 1;
 // To turn off: delete the env var and restart the API server.
 const TESTING_UNLIMITED_CREDITS = process.env.TESTING_UNLIMITED_CREDITS === "true";
 // Admin users always bypass credit checks
-const ADMIN_USER_IDS = new Set([process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk"]);
+const ADMIN_USER_IDS = new Set(process.env.CLERK_ADMIN_USER_ID ? [process.env.CLERK_ADMIN_USER_ID] : []);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 // ─────────────────────────────────────────────────────────────────────────────
 

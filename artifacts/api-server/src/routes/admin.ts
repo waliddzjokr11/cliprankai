@@ -6,7 +6,7 @@ import { randomUUID } from "crypto";
 
 const router = Router();
 
-const ADMIN_USER_ID = process.env.CLERK_ADMIN_USER_ID ?? "user_3DAainmIJ1RHEdNGbA8rXsNn8Nk";
+const ADMIN_USER_ID = process.env.CLERK_ADMIN_USER_ID;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 // Inline table defs for tables not yet in shared lib schema

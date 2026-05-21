@@ -2,6 +2,7 @@
     "name":  "@workspace/integrations-openai-ai-react",
     "version":  "0.0.0",
     "private":  true,
+    "packageManager": "pnpm@10.7.1",
     "type":  "module",
     "exports":  {
                     ".":  "./src/index.ts",

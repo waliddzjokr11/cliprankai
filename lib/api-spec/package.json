@@ -2,6 +2,8 @@
     "name":  "@workspace/api-spec",
     "version":  "0.0.0",
     "private":  true,
+    "packageManager": "pnpm@10.7.1",
+    "type":  "module",
     "scripts":  {
                     "codegen":  "orval --config ./orval.config.ts \u0026\u0026 node -e \"require(\u0027fs\u0027).writeFileSync(\u0027../api-zod/src/index.ts\u0027, \u0027export * from \\\"./generated/api\\\";\\n\u0027)\" \u0026\u0026 pnpm -w run typecheck:libs"
                 },
