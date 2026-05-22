@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm -r --filter !./artifacts/mockup-sandbox --if-present run build",
-    "start": "node --enable-source-maps ./artifacts/api-server/dist/index.mjs",
+    "build": "pnpm --filter @workspace/api-server run build",
+    "start": "pnpm --filter @workspace/api-server run start",
     "db:push": "pnpm --filter @workspace/db run push",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
