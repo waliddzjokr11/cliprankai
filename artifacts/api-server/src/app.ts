@@ -58,7 +58,7 @@ app.use(
 app.use("/api", router);
 
 // SPA fallback — serve index.html for any non-API route
-app.get("/{*splat}", (req, res) => {
+app.use((req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
   res.sendFile(path.join(frontendDist, "index.html"));
 });
